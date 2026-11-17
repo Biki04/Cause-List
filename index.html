@@ -75,6 +75,25 @@ td select:hover{border-color:var(--line)}
 .cbi:hover{border-color:var(--line);background-color:rgba(255,255,255,.48)}
 .cbi::placeholder{color:#8a9aaa}
 .note strong{color:var(--acc)}
+
+/* Side menu and account panel */
+.menu-top{display:flex;justify-content:flex-end;align-items:center;margin:0 0 10px;gap:8px}
+#menuShade{position:fixed;inset:0;background:rgba(12,29,48,.34);z-index:80;display:none}
+#menuShade.show{display:block}
+#sideMenu{position:fixed;z-index:81;top:0;right:0;height:100dvh;width:min(360px,88vw);overflow-y:auto;padding:18px;background:rgba(248,252,255,.96);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);border-left:1px solid rgba(20,163,161,.45);box-shadow:-12px 0 34px rgba(17,47,75,.18);transform:translateX(105%);transition:transform .22s ease}
+#sideMenu.show{transform:translateX(0)}
+.menu-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.menu-head h2{font-size:21px;color:var(--acc);margin:0}
+.menu-group{display:grid;gap:8px;margin:12px 0}
+.menu-group button{width:100%;text-align:left}
+.menu-caption{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);font-weight:700;margin:12px 2px 5px}
+#accountPanel{display:none;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.72)}
+#accountPanel.show{display:block}
+.account-line{margin:5px 0;overflow-wrap:anywhere}
+.account-label{font-size:12px;color:var(--mut);font-weight:700}
+#accountAvatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--acc2);display:none}
+@media(max-width:700px){#sideMenu{width:min(340px,90vw)}.menu-top{margin-bottom:7px}}
+@media print{#menuShade,#sideMenu,.menu-top{display:none!important}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 @media (max-width:700px){.wrap{padding:9px}.card{padding:10px}.bar{gap:6px}.bar button{flex:1 1 auto}}
 #printHead{display:none}
@@ -110,6 +129,7 @@ td select:hover{border-color:var(--line)}
   <script src="https://accounts.google.com/gsi/client" async defer></script>\n</head>
 <body>
 <div class="wrap">
+<div class="menu-top noprint"><button class="alt" onclick="openSideMenu()" aria-label="Open side menu">☰ Menu</button></div>
 
 <div class="card noprint">
   <div class="head">
@@ -149,30 +169,46 @@ td select:hover{border-color:var(--line)}
     <button class="alt" onclick="dlCSV()">Download Excel (CSV)</button>
     <span class="sp"></span>
     <button class="tl" onclick="saveDay()">Save this day</button>
-    <button class="alt" onclick="toggleDays()">Saved days</button>
     <button class="alt" onclick="newDay()">New list</button>
   </div>
   <div class="bar" style="margin-top:10px">
     <button class="alt" onclick="document.getElementById('lists').classList.toggle('show')">Edit dropdown lists</button>
-    <button class="alt" onclick="toggleMgr()">Manage saved cases</button>
-    <button class="alt" onclick="backup()">⬇ Backup all data</button>
-    <button class="alt" onclick="document.getElementById('restoreFile').click()">⬆ Restore / merge backup</button>
-    <input type="file" id="restoreFile" accept=".json,application/json" style="display:none" onchange="restore(this)">
-    <span class="sp"></span>
-    <button class="alt" id="googleSignInBtn" onclick="googleSignIn()">Sign in with Google</button>
-    <button class="tl" id="googleSaveBtn" onclick="saveToGoogleDrive()" disabled>Save to Google Drive</button>
-    <button class="alt" id="googleLoadBtn" onclick="loadFromGoogleDrive()" disabled>Load from Google Drive</button>
-    <span class="note" id="googleStatus" aria-live="polite">Google Drive not connected</span>
-    <span class="note">Autosaves in this browser. Works fully offline.</span>
+    <span class="note">Autosaves on this device and to Google Drive when connected.</span>
   </div>
-  <div id="dayPanel"><div id="dayList"></div></div>
   <div class="lists" id="lists"></div>
-  <div id="mgr">
-    <input id="mgrQ" placeholder="Search saved cases…" oninput="renderMgr()">
-    <div id="mgrList"></div>
-  </div>
 </div>
 
+</div>
+
+<div id="menuShade" onclick="closeSideMenu()"></div>
+<aside id="sideMenu" aria-label="Application menu" aria-hidden="true">
+  <div class="menu-head"><h2>Cause List Menu</h2><button class="alt" onclick="closeSideMenu()" aria-label="Close menu">✕</button></div>
+  <div class="menu-caption">Google Drive</div>
+  <div class="menu-group">
+    <button class="alt" id="googleSignInBtn" onclick="googleSignIn()">Sign in with Google</button>
+    <button class="alt" id="googleLoadBtn" onclick="loadFromGoogleDrive()" disabled>Load from Google Drive</button>
+    <div class="note" id="googleStatus" aria-live="polite">Google Drive not connected</div>
+  </div>
+  <div class="menu-caption">Your data</div>
+  <div class="menu-group">
+    <button class="alt" onclick="backup();closeSideMenu()">⬇ Backup all data</button>
+    <button class="alt" onclick="closeSideMenu();document.getElementById('restoreFile').click()">⬆ Restore / merge backup</button>
+    <input type="file" id="restoreFile" accept=".json,application/json" style="display:none" onchange="restore(this)">
+    <button class="alt" onclick="toggleMgr();closeSideMenu()">Manage saved cases</button>
+    <button class="alt" onclick="toggleDays();closeSideMenu()">Saved days</button>
+  </div>
+  <div class="menu-caption">Account</div>
+  <div class="menu-group"><button class="tl" onclick="toggleAccount()">Account details</button></div>
+  <section id="accountPanel" aria-live="polite">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><img id="accountAvatar" alt="Google account profile"><div><b id="accountName">Not signed in</b><div class="note" id="accountEmail">Sign in with Google to view account details</div></div></div>
+    <div class="account-line"><div class="account-label">Account</div><div id="accountStatus">Not connected</div></div>
+    <button class="del" id="googleLogoutBtn" onclick="googleSignOut()" style="width:100%;margin-top:12px" disabled>Log out</button>
+  </section>
+</aside>
+<div id="dayPanel"><div id="dayList"></div></div>
+<div id="mgr">
+  <input id="mgrQ" placeholder="Search saved cases…" oninput="renderMgr()">
+  <div id="mgrList"></div>
 </div>
 <div id="sg"></div>
 <div id="cb"></div>
@@ -180,9 +216,9 @@ td select:hover{border-color:var(--line)}
 
 <script>
 const DEF={
-  court:["I","II","III","Addl. Mun","SJ1","SJ2","SJ3","ADJ 1","ADJ 2","ADJ 3","ADJ 4","ADJ 5","DJ","EM","SDLRO"],
-  type:["TS","TA","T. Ex","Misc. Pre.","Civil Misc","Money Ex.","Misc. Adoption"],
-  forr:["Adm. Hng","Plaint","WS","WO","W/O","PW","DW","Order","S/R","Steps","Exp. Hrg.","Requisites","Evidence","A/C","Argument","Pet. Hng.","Further (Arg/Hrg)","Appearance"]
+  court:["I","II","III","Addl. Mun","SJ1","SJ2","SJ3","ADJ 1","ADJ 2","ADJ 3","ADJ 4","ADJ 5","FTC 1","FTC 2","DJ"FTC 3","FTC 4","DJ","EM","LR","SDLRO"],
+  type:["TS","TA","T. Ex","Misc. Pre.","Misc. Ex.","Civil Misc","Money Ex.","Misc. Adoption","GR"],
+  forr:["Adm. Hng","Plaint","W/S","W/O","PW","DW","Order","S/R","Steps","Exp. Hrg.","Requisites","Evidence","A/C","Argument","Pet. Hng.","Further (Arg/Hrg)","Appearance","Inj. Ext."]
 };
 const NAMES={court:"Court",type:"Type",forr:"For"};
 const K="causelist_v1",CK="causelist_cases_v1",SK="causelist_days_v1";
@@ -216,6 +252,7 @@ function load(){
 }
 function persist(){
   try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
+  scheduleDriveAutosave();
   if(!historyApplying)historySchedule();
 }
 function saveCases(){try{localStorage.setItem(CK,JSON.stringify(CASES))}catch(e){} scheduleDriveAutosave();}
@@ -611,6 +648,7 @@ function restore(inp){
   };
   rd.readAsText(f);
 }
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSideMenu()});
 document.addEventListener("change",e=>{const t=e.target;if(t.tagName==="SELECT"&&t.nextElementSibling&&t.nextElementSibling.classList.contains("pv"))t.nextElementSibling.textContent=t.value});
 /* keep the suggestion list open while it is being scrolled/touched */
 let sgHold=false,sgT=0;
@@ -620,6 +658,29 @@ const sgBox=$("sg");
 ["touchend","touchcancel"].forEach(ev=>sgBox.addEventListener(ev,()=>{clearTimeout(sgT);sgT=setTimeout(()=>sgHold=false,1500)},{passive:true}));
 window.addEventListener("scroll",e=>{if(e.target===sgBox||sgBox.contains(e.target)||sgHold)return;hideSg()},true);
 document.addEventListener("pointerdown",e=>{if(sgBox.style.display==="block"&&!sgBox.contains(e.target)&&!(e.target.closest&&e.target.closest(".grow")))hideSg()});
+
+/* ---------- Side menu and account ---------- */
+function openSideMenu(){
+  $("sideMenu").classList.add("show");$("menuShade").classList.add("show");
+  $("sideMenu").setAttribute("aria-hidden","false");
+}
+function closeSideMenu(){
+  $("sideMenu").classList.remove("show");$("menuShade").classList.remove("show");
+  $("sideMenu").setAttribute("aria-hidden","true");
+}
+function toggleAccount(){
+  $("accountPanel").classList.toggle("show");
+  renderAccount();
+}
+function renderAccount(){
+  const u=googleUser||null;
+  $("accountName").textContent=u?(u.name||"Google account"):(googleAccessToken?"Google account":"Not signed in");
+  $("accountEmail").textContent=u?(u.email||"Email not provided"):(googleAccessToken?"Account details unavailable":"Sign in with Google to view account details");
+  $("accountStatus").textContent=validGoogleToken()?"Connected to Google Drive":"Not connected";
+  const avatar=$("accountAvatar");
+  if(u&&u.picture){avatar.src=u.picture;avatar.style.display="block";}else{avatar.removeAttribute("src");avatar.style.display="none";}
+  $("googleLogoutBtn").disabled=!googleAccessToken;
+}
 
 /* ---------- Google Drive sync ---------- */
 /*
@@ -633,10 +694,11 @@ document.addEventListener("pointerdown",e=>{if(sgBox.style.display==="block"&&!s
      never put a client secret in this HTML file.
 */
 const GOOGLE_CLIENT_ID = "940827541665-037gbbudqh7g0ffo0fvqcdmk9847g0m1.apps.googleusercontent.com";
-const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
-const DRIVE_FILE_NAME = "Cause_List_App_Data.json";
+const DRIVE_SCOPE = "openid email profile https://www.googleapis.com/auth/drive.file";
+const DRIVE_FILE_NAME = "Cause_List_App_Data_Fresh.json";
 let googleTokenClient = null;
 let googleAccessToken = "";
+let googleUser = null;
 let driveFileId = "";
 let googleTokenExpiresAt = 0;
 let driveSaveTimer = null;
@@ -647,9 +709,21 @@ function googleStatus(message){
   if(el)el.textContent=message;
 }
 function googleButtons(connected){
-  $("googleSaveBtn").disabled=!connected;
   $("googleLoadBtn").disabled=!connected;
   $("googleSignInBtn").textContent=connected?"Reconnect Google":"Sign in with Google";
+  renderAccount();
+}
+function googleSignOut(){
+  const token=googleAccessToken;
+  if(token&&window.google&&google.accounts&&google.accounts.oauth2){
+    try{google.accounts.oauth2.revoke(token,()=>{});}catch(e){}
+  }
+  googleAccessToken="";googleTokenExpiresAt=0;googleUser=null;driveFileId="";
+  clearTimeout(driveSaveTimer);
+  googleButtons(false);
+  googleStatus("Signed out — local autosave remains active");
+  renderAccount();
+  toast("Logged out of Google");
 }
 function googleConfigured(){
   return GOOGLE_CLIENT_ID &&
@@ -676,8 +750,12 @@ function initGoogleAuth(){
         googleButtons(true);
         googleStatus("Google connected — checking Drive…");
         try{
+          const profileResponse=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+googleAccessToken}});
+          if(profileResponse.ok)googleUser=await profileResponse.json();
+          renderAccount();
           await findDriveFile();
-          googleStatus(driveFileId?"Connected to Google Drive":"Connected — ready to create your data file");
+          googleStatus("Google Drive connected — automatic saving is on");
+          scheduleDriveAutosave();
         }catch(err){
           googleStatus("Drive check failed: "+err.message);
         }
@@ -748,7 +826,7 @@ function makeDriveBackup(){
   };
 }
 async function saveToGoogleDrive(){
-  if(driveBusy)return;
+  if(driveBusy){scheduleDriveAutosave();return;}
   if(!validGoogleToken()){googleSignIn();return;}
   driveBusy=true;googleStatus("Saving to Google Drive…");
   try{
@@ -776,8 +854,7 @@ async function saveToGoogleDrive(){
       );
       driveFileId=result.id;
     }
-    googleStatus("Saved to Google Drive at "+new Date().toLocaleTimeString());
-    toast("Saved to Google Drive");
+    googleStatus("Automatically saved to Google Drive at "+new Date().toLocaleTimeString());
   }catch(err){
     googleStatus("Drive save failed: "+err.message);
     toast("Google Drive save failed");
@@ -819,12 +896,15 @@ async function loadFromGoogleDrive(){
   }finally{driveBusy=false;}
 }
 function scheduleDriveAutosave(){
-  if(!validGoogleToken())return;
+  if(!validGoogleToken()){
+    if(googleAccessToken)googleStatus("Google session expired — sign in again; changes remain saved on this device");
+    return;
+  }
   clearTimeout(driveSaveTimer);
-  driveSaveTimer=setTimeout(()=>saveToGoogleDrive(),1800);
+  driveSaveTimer=setTimeout(()=>saveToGoogleDrive(),1200);
 }
 
-load();historyInit();render();
+load();historyInit();render();renderAccount();
 </script>
 </body>
 </html>
