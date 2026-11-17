@@ -100,7 +100,22 @@ td select:hover{border-color:var(--line)}
 @media (max-width:700px){.head{grid-template-columns:1fr}}
 .pv{display:none}
 @page{size:A4 portrait;margin:9mm 8mm}
+@page landscapeCauseList{size:A4 landscape;margin:7mm 7mm}
 @media print{
+  body.print-landscape{page:landscapeCauseList}
+  body.print-landscape table{font-size:9.5pt}
+  body.print-landscape th,body.print-landscape td{padding:2px 4px!important;line-height:1.15}
+  body.print-landscape th:nth-child(1){width:5%}
+  body.print-landscape th:nth-child(2){width:8%}
+  body.print-landscape th:nth-child(3){width:10%}
+  body.print-landscape th:nth-child(4){width:9%}
+  body.print-landscape th:nth-child(5){width:39%}
+  body.print-landscape th:nth-child(6){width:12%}
+  body.print-landscape th:nth-child(7){width:17%}
+  body.print-landscape .grow::after,body.print-landscape .grow textarea{font-size:9.5pt;line-height:1.15}
+  body.print-landscape #printHead h1{font-size:15pt}
+  body.print-landscape #printHead div{font-size:10pt}
+
   html,body{background:#fff;margin:0;padding:0;font-size:11pt}
   .wrap{padding:0;max-width:none;margin:0}
   .noprint,.ac,th.ac,#sg,#cb,#toast{display:none!important}
@@ -164,7 +179,14 @@ td select:hover{border-color:var(--line)}
 
 <div class="card noprint">
   <div class="bar">
-    <button onclick="window.print()">Print / Save PDF</button>
+    <label for="printOrientation" style="display:flex;align-items:center;gap:6px;margin:0;color:var(--acc);font-size:14px">
+      Print orientation
+      <select id="printOrientation" onchange="setPrintOrientation(this.value)" style="width:auto;min-width:112px;padding:7px 24px 7px 8px">
+        <option value="portrait">Portrait</option>
+        <option value="landscape">Landscape</option>
+      </select>
+    </label>
+    <button onclick="printCauseList()">Print / Save PDF</button>
     <button class="alt" onclick="copyText()">Copy as text</button>
     <button class="alt" onclick="dlCSV()">Download Excel (CSV)</button>
     <span class="sp"></span>
@@ -744,7 +766,7 @@ function googleSignOut(){
 }
 function googleConfigured(){
   return GOOGLE_CLIENT_ID &&
-    !GOOGLE_CLIENT_ID.includes("PASTE_YOUR") &&
+    !GOOGLE_CLIENT_ID.includes("940827541665-037gbbudqh7g0ffo0fvqcdmk9847g0m1.apps.googleusercontent.com") &&
     window.google && google.accounts && google.accounts.oauth2;
 }
 function initGoogleAuth(){
@@ -787,7 +809,7 @@ function initGoogleAuth(){
   return true;
 }
 function googleSignIn(){
-  if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR")){
+  if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("940827541665-037gbbudqh7g0ffo0fvqcdmk9847g0m1.apps.googleusercontent.com")){
     toast("First add your Google OAuth Client ID in the HTML");
     googleStatus("Google OAuth Client ID is not configured");
     return;
