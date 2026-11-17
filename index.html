@@ -172,7 +172,7 @@ td select:hover{border-color:var(--line)}
     <button class="alt" onclick="newDay()">New list</button>
   </div>
   <div class="bar" style="margin-top:10px">
-    <span class="note">Autosaves on this device and to Google Drive when connected. Edit dropdown lists from the side menu.</span>
+    <span class="note">Autosaves locally and syncs Google Drive across signed-in devices (background check every 7 seconds). Edit dropdown lists from the side menu.</span>
   </div>
   <div class="lists" id="lists"></div>
 </div>
@@ -252,6 +252,7 @@ function load(){
 }
 function persist(){
   try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
+  if(typeof localDirty!=="undefined")localDirty=true;
   scheduleDriveAutosave();
   if(!historyApplying)historySchedule();
 }
@@ -572,7 +573,7 @@ function renderSaved(){
 function saveDay(){
   if(!S.date){toast("Pick a date first");return}
   S.rows.forEach((_,i)=>remember(i));
-  const d=days();d[S.date]={title:S.title,date:S.date,place:S.place,rows:JSON.parse(JSON.stringify(S.rows))};
+  const d=days();d[S.date]={title:S.title,date:S.date,place:S.place,rows:JSON.parse(JSON.stringify(S.rows)),updatedAt:new Date().toISOString()};
   localStorage.setItem(SK,JSON.stringify(d));renderSaved();scheduleDriveAutosave();toast("Saved for "+fmtDate(S.date));
 }
 function openDay(k){
@@ -644,6 +645,7 @@ function restore(inp){
       (d.lists[k]||[]).forEach(o=>{if(!S.lists[k].includes(o))S.lists[k].push(o)});
     });
     persist();render();
+    if(validGoogleToken())setTimeout(()=>saveToGoogleDrive(),250);
     toast(nc+" new case(s), "+nd+" new day(s) added");
   };
   rd.readAsText(f);
@@ -706,8 +708,16 @@ let googleAccessToken = "";
 let googleUser = null;
 let driveFileId = "";
 let googleTokenExpiresAt = 0;
+let googleRefreshTimer = null;
+let googleSilentAuthInFlight = false;
+const GOOGLE_LOGIN_PREF_KEY = "causelist_google_login_preferred_v1";
 let driveSaveTimer = null;
+let drivePollTimer = null;
 let driveBusy = false;
+let driveModifiedTime = "";
+let localDirty = false;
+let lastCloudSnapshot = "";
+const DRIVE_POLL_MS = 7000;
 
 function googleStatus(message){
   const el=$("googleStatus");
@@ -723,8 +733,10 @@ function googleSignOut(){
   if(token&&window.google&&google.accounts&&google.accounts.oauth2){
     try{google.accounts.oauth2.revoke(token,()=>{});}catch(e){}
   }
-  googleAccessToken="";googleTokenExpiresAt=0;googleUser=null;driveFileId="";
-  clearTimeout(driveSaveTimer);
+  googleAccessToken="";googleTokenExpiresAt=0;googleUser=null;driveFileId="";driveModifiedTime="";
+  localStorage.removeItem(GOOGLE_LOGIN_PREF_KEY);
+  clearTimeout(googleRefreshTimer);googleRefreshTimer=null;googleSilentAuthInFlight=false;
+  clearTimeout(driveSaveTimer);clearInterval(drivePollTimer);drivePollTimer=null;
   googleButtons(false);
   googleStatus("Signed out — local autosave remains active");
   renderAccount();
@@ -752,6 +764,9 @@ function initGoogleAuth(){
         }
         googleAccessToken=response.access_token;
         googleTokenExpiresAt=Date.now()+(Number(response.expires_in||3600)*1000);
+        localStorage.setItem(GOOGLE_LOGIN_PREF_KEY,"1");
+        googleSilentAuthInFlight=false;
+        scheduleGoogleTokenRefresh();
         googleButtons(true);
         googleStatus("Google connected — checking Drive…");
         try{
@@ -759,8 +774,10 @@ function initGoogleAuth(){
           if(profileResponse.ok)googleUser=await profileResponse.json();
           renderAccount();
           await findDriveFile();
-          googleStatus("Google Drive connected — automatic saving is on");
-          scheduleDriveAutosave();
+          if(driveFileId) await syncFromDrive(true);
+          else scheduleDriveAutosave();
+          startDrivePolling();
+          googleStatus("Google Drive connected — background sync is on");
         }catch(err){
           googleStatus("Drive check failed: "+err.message);
         }
@@ -777,6 +794,8 @@ function googleSignIn(){
   }
   const start=()=>{
     if(!initGoogleAuth())return;
+    // A user-initiated sign-in establishes the remembered-login preference.
+    localStorage.setItem(GOOGLE_LOGIN_PREF_KEY,"1");
     googleTokenClient.requestAccessToken({prompt:googleAccessToken?"":"consent"});
   };
   if(window.google&&google.accounts&&google.accounts.oauth2)start();
@@ -793,6 +812,49 @@ function googleSignIn(){
 function validGoogleToken(){
   return !!googleAccessToken && Date.now()<googleTokenExpiresAt-60000;
 }
+
+/*
+  Google Identity Services browser access tokens are short-lived (normally about
+  one hour). A static GitHub Pages app cannot store a permanent refresh token.
+  We therefore try a quiet re-authorization shortly before expiry and when the
+  tab becomes active. Google may still require the user to sign in again if its
+  browser session, consent, popup policy, or account security state requires it.
+*/
+function scheduleGoogleTokenRefresh(){
+  clearTimeout(googleRefreshTimer);
+  if(!googleTokenExpiresAt)return;
+  const delay=Math.max(15000,googleTokenExpiresAt-Date.now()-5*60*1000);
+  googleRefreshTimer=setTimeout(()=>trySilentGoogleReconnect(),delay);
+}
+function trySilentGoogleReconnect(){
+  if(!localStorage.getItem(GOOGLE_LOGIN_PREF_KEY) || googleSilentAuthInFlight)return;
+  if(!googleConfigured() || !initGoogleAuth())return;
+  if(validGoogleToken() && Date.now()<googleTokenExpiresAt-5*60*1000){
+    scheduleGoogleTokenRefresh();
+    return;
+  }
+  googleSilentAuthInFlight=true;
+  googleStatus("Refreshing Google connection…");
+  try{
+    // Empty prompt requests a token without forcing the consent screen again.
+    googleTokenClient.requestAccessToken({prompt:""});
+    setTimeout(()=>{
+      if(googleSilentAuthInFlight){
+        googleSilentAuthInFlight=false;
+        if(!validGoogleToken())googleStatus("Google needs you to reconnect — your local data is safe");
+      }
+    },12000);
+  }catch(err){
+    googleSilentAuthInFlight=false;
+    googleStatus("Google needs you to reconnect — your local data is safe");
+  }
+}
+window.addEventListener("focus",()=>{
+  if(localStorage.getItem(GOOGLE_LOGIN_PREF_KEY) && !validGoogleToken())trySilentGoogleReconnect();
+});
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden && localStorage.getItem(GOOGLE_LOGIN_PREF_KEY) && !validGoogleToken())trySilentGoogleReconnect();
+});
 async function driveRequest(url,options={}){
   if(!validGoogleToken())throw new Error("Google session expired. Please reconnect.");
   const response=await fetch(url,{
@@ -813,7 +875,7 @@ async function driveRequest(url,options={}){
 async function findDriveFile(){
   const q=encodeURIComponent("name='"+DRIVE_FILE_NAME+"' and trashed=false");
   const result=await driveRequest(
-    "https://www.googleapis.com/drive/v3/files?q="+q+"&fields=files(id,name,modifiedTime)&spaces=drive"
+    "https://www.googleapis.com/drive/v3/files?q="+q+"&fields=files(id,name,modifiedTime)&spaces=drive&orderBy=modifiedTime desc&pageSize=10"
   );
   driveFileId=result.files&&result.files.length?result.files[0].id:"";
   return driveFileId;
@@ -821,14 +883,94 @@ async function findDriveFile(){
 function makeDriveBackup(){
   S.rows.forEach((_,i)=>remember(i));
   return {
-    app:"causelist",
-    v:1,
-    exported:new Date().toISOString(),
+    app:"causelist",v:2,exported:new Date().toISOString(),
     current:{title:S.title,date:S.date,place:S.place,rows:S.rows,lists:S.lists},
-    cases:CASES,
-    days:days(),
-    lists:S.lists
+    cases:CASES,days:days(),lists:S.lists
   };
+}
+function caseKey(c){return [c.no,c.p1,c.p2,c.court].map(nz).join("| ")}
+function mergeCases(a,b){
+  const out=[],seen=new Set();
+  [...(a||[]),...(b||[])].forEach(c=>{if(!c)return;const key=caseKey(c);if(!key.replace(/[| ]/g,""))return;if(seen.has(key))return;seen.add(key);out.push({...c,id:c.id||uid()});});
+  return out;
+}
+function mergeDays(a,b){
+  const out={...(a||{})};
+  Object.keys(b||{}).forEach(k=>{
+    if(!out[k])out[k]=b[k];
+    else {
+      const x=Date.parse(out[k].updatedAt||out[k].savedAt||0)||0;
+      const y=Date.parse(b[k].updatedAt||b[k].savedAt||0)||0;
+      if(y>x)out[k]=b[k];
+    }
+  });
+  return out;
+}
+function mergeLists(a,b){
+  const out={};
+  Object.keys(NAMES).forEach(k=>{
+    const vals=[...(a&&a[k]||[]),...(b&&b[k]||[])],seen=new Set();
+    out[k]=vals.filter(v=>{const key=nz(v);if(!key||seen.has(key))return false;seen.add(key);return true;});
+  });
+  return out;
+}
+function mergeCloudData(data,initial=false){
+  const before=JSON.stringify({S,CASES,days:days()});
+  const remoteLists=Object.assign({},DEF,data.lists||data.current?.lists||{});
+  const mergedLists=mergeLists(S.lists,remoteLists);
+  CASES=mergeCases(CASES,data.cases||[]);saveCases();
+  const mergedDays=mergeDays(days(),data.days||{});localStorage.setItem(SK,JSON.stringify(mergedDays));
+  // Preserve a populated offline list on first sign-in; merge its saved collections,
+  // then upload it. A fresh/empty device adopts the existing cloud working list.
+  const localHasWork=(S.title&&S.title!=="Cause List")||!!S.place||S.rows.some(r=>[r.court,r.type,r.no,r.p1,r.p2,r.forr,r.rem].some(v=>nz(v)));
+  if(initial && localHasWork)localDirty=true;
+  // Current working list is shared too. Pull remote when this device has no unsent edits.
+  if(data.current && ((initial && !localHasWork) || (!initial && !localDirty))){
+    S={title:data.current.title||"Cause List",date:data.current.date||today(),place:data.current.place||"",
+      rows:Array.isArray(data.current.rows)&&data.current.rows.length?data.current.rows:[blank()],
+      lists:mergedLists};
+    try{localStorage.setItem(K,JSON.stringify(S));}catch(e){}
+    render();historyInit();
+  }else{
+    S.lists=mergedLists;
+    try{localStorage.setItem(K,JSON.stringify(S));}catch(e){}
+  }
+  const after=JSON.stringify({S,CASES,days:days()});
+  const changed=before!==after;
+  if(changed)render();
+  return changed;
+}
+async function readDriveState(){
+  if(!driveFileId)await findDriveFile();
+  if(!driveFileId)return null;
+  const meta=await driveRequest("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(driveFileId)+"?fields=id,name,modifiedTime");
+  if(meta.modifiedTime && meta.modifiedTime===driveModifiedTime)return {unchanged:true,meta};
+  const data=await driveRequest("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(driveFileId)+"?alt=media");
+  driveModifiedTime=meta.modifiedTime||"";
+  return {data,meta};
+}
+async function syncFromDrive(initial=false){
+  if(!validGoogleToken()||driveBusy)return;
+  driveBusy=true;
+  try{
+    const result=await readDriveState();
+    if(!result){scheduleDriveAutosave();return;}
+    if(result.unchanged)return;
+    if(!result.data||result.data.app!=="causelist")throw new Error("The Drive file is not a valid Cause List backup");
+    const changed=mergeCloudData(result.data,initial);
+    const merged=makeDriveBackup();
+    const comparable=x=>JSON.stringify({current:x.current||null,cases:x.cases||[],days:x.days||{},lists:x.lists||{}});
+    if(comparable(merged)!==comparable(result.data)){
+      driveBusy=false;await saveToGoogleDrive();driveBusy=true;
+    }else localDirty=false;
+    lastCloudSnapshot=JSON.stringify(merged);
+    googleStatus(changed?"Synced updates from Google Drive":"All devices are up to date");
+  }catch(err){googleStatus("Background sync issue: "+err.message);}
+  finally{driveBusy=false;}
+}
+function startDrivePolling(){
+  clearInterval(drivePollTimer);
+  drivePollTimer=setInterval(()=>{if(validGoogleToken())syncFromDrive(false);},DRIVE_POLL_MS);
 }
 async function saveToGoogleDrive(){
   if(driveBusy){scheduleDriveAutosave();return;}
@@ -859,47 +1001,21 @@ async function saveToGoogleDrive(){
       );
       driveFileId=result.id;
     }
-    googleStatus("Automatically saved to Google Drive at "+new Date().toLocaleTimeString());
+    const meta=await driveRequest("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(driveFileId)+"?fields=modifiedTime");
+    driveModifiedTime=meta.modifiedTime||driveModifiedTime;
+    localDirty=false;lastCloudSnapshot=data;
+    googleStatus("Synced to Google Drive at "+new Date().toLocaleTimeString());
   }catch(err){
     googleStatus("Drive save failed: "+err.message);
     toast("Google Drive save failed");
   }finally{driveBusy=false;}
 }
 async function loadFromGoogleDrive(){
-  if(driveBusy)return;
   if(!validGoogleToken()){googleSignIn();return;}
-  driveBusy=true;googleStatus("Loading from Google Drive…");
-  try{
-    if(!driveFileId)await findDriveFile();
-    if(!driveFileId){googleStatus("No saved Cause List file found in Drive");toast("No Drive backup found");return;}
-    const data=await driveRequest("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(driveFileId)+"?alt=media");
-    if(!data||data.app!=="causelist")throw new Error("The Drive file is not a valid Cause List backup");
-    if(!confirm("Load the data saved in Google Drive? This replaces the current list, saved days and saved cases in this browser."))return;
-    historyCheckpoint();
-    if(data.current){
-      S={
-        title:data.current.title||"Cause List",
-        date:data.current.date||today(),
-        place:data.current.place||"",
-        rows:Array.isArray(data.current.rows)&&data.current.rows.length?data.current.rows:[blank()],
-        lists:Object.assign({},DEF,data.current.lists||data.lists||{})
-      };
-      try{localStorage.setItem(K,JSON.stringify(S));}catch(e){}
-    }else if(data.days){
-      // Compatibility with backups made by the app's original Backup button.
-      S.lists=Object.assign({},DEF,data.lists||S.lists||{});
-    }
-    CASES=Array.isArray(data.cases)?data.cases:[];
-    saveCases();
-    if(data.days&&typeof data.days==="object")localStorage.setItem(SK,JSON.stringify(data.days));
-    historyInit();render();
-    googleStatus("Loaded from Google Drive");
-    toast("Loaded from Google Drive");
-  }catch(err){
-    googleStatus("Drive load failed: "+err.message);
-    toast("Google Drive load failed");
-  }finally{driveBusy=false;}
+  await syncFromDrive(true);
+  toast("Google Drive data synced");
 }
+
 function scheduleDriveAutosave(){
   if(!validGoogleToken()){
     if(googleAccessToken)googleStatus("Google session expired — sign in again; changes remain saved on this device");
@@ -910,6 +1026,15 @@ function scheduleDriveAutosave(){
 }
 
 load();historyInit();render();renderAccount();
+// Restore the signed-in experience after reload where Google's browser session
+// permits a quiet token refresh. No access token is stored in localStorage.
+if(localStorage.getItem(GOOGLE_LOGIN_PREF_KEY)){
+  const bootAuth=()=>{
+    if(googleConfigured())trySilentGoogleReconnect();
+    else setTimeout(bootAuth,500);
+  };
+  setTimeout(bootAuth,900);
+}
 </script>
 </body>
 </html>
