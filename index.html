@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cause List</title>
 <style>
-:root{--bg:#f5f9fb;--card:#fff;--ink:#16263a;--mut:#5f7387;--line:#d6e2ea;--acc:#1b4f8a;--acc2:#eaf2fa;--teal:#14a3a1;--teal2:#e6f6f5;--red:#b42318;--glass:rgba(255,255,255,.58);--glass-line:rgba(255,255,255,.76)}
+:root{--cause-font-family:'Times New Roman',Times,serif;--cause-font-size:14px;--bg:#f5f9fb;--card:#fff;--ink:#16263a;--mut:#5f7387;--line:#d6e2ea;--acc:#1b4f8a;--acc2:#eaf2fa;--teal:#14a3a1;--teal2:#e6f6f5;--red:#b42318;--glass:rgba(255,255,255,.58);--glass-line:rgba(255,255,255,.76)}
 *{box-sizing:border-box}
 body{margin:0;font:16px/1.4 'Times New Roman',Times,serif;background:linear-gradient(135deg,#e6f0fa 0%,#f6fafc 50%,#e2f5f4 100%) fixed;color:var(--ink);min-height:100vh;background-attachment:fixed}
 body::before,body::after{content:"";position:fixed;z-index:-1;pointer-events:none;border-radius:50%}
@@ -31,15 +31,15 @@ button:disabled:hover{background:rgba(255,255,255,.54);border-color:rgba(185,205
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border:1px solid rgba(255,255,255,.62);border-radius:10px;background:rgba(255,255,255,.27);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
 .sp{flex:1}
 .tw{overflow-x:auto;border:1px solid rgba(255,255,255,.78);border-radius:10px;background:rgba(255,255,255,.24);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-table{border-collapse:collapse;width:100%;min-width:900px}
+table{border-collapse:collapse;width:100%;min-width:900px}\n#causeTable{table-layout:fixed;font-family:var(--cause-font-family);font-size:var(--cause-font-size)}\n#causeTable th,#causeTable td{font-family:var(--cause-font-family);font-size:var(--cause-font-size);white-space:normal;overflow-wrap:anywhere;word-break:normal}
 th{background:rgba(231,240,250,.88);color:var(--acc);text-align:center;font-size:14px;font-weight:700;letter-spacing:.2px;padding:8px 7px;border:1px solid var(--line);border-bottom:2px solid var(--teal)}
 td{border:1px solid var(--line);padding:3px;vertical-align:middle;text-align:center}
 td.sl{width:44px;font-weight:700;color:var(--teal);background:rgba(230,246,245,.8)}
 tbody tr:nth-child(even) td:not(.sl){background:rgba(240,247,252,.55)}
 tbody tr:hover td:not(.sl){background:rgba(224,240,250,.82)}
 td.pt{min-width:300px}
-td.pt .pp{display:flex;gap:4px;align-items:center}
-td.pt .pp span{color:var(--teal);font-size:14px;font-style:italic;font-weight:700}
+td.pt .pp{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:4px;align-items:start}\ntd.pt .pp>.grow{min-width:0;width:100%}
+td.pt .pp span{color:var(--teal);font-family:var(--cause-font-family);font-size:var(--cause-font-size);font-style:italic;font-weight:700;align-self:start}
 td.ac{width:92px;white-space:nowrap}
 td.no{min-width:76px;width:80px;max-width:88px}
 td.cr{min-width:78px;width:84px}
@@ -48,9 +48,9 @@ td.fr{min-width:120px}
 td.cr select,td.ty select,td.fr select{padding-left:2px;padding-right:2px}
 /* auto-growing, centred, wrapping text boxes */
 .grow{display:grid;width:100%;min-width:0;flex:1}
-.grow::after,.grow textarea{grid-area:1/1;font:inherit;padding:6px;border:1px solid transparent;border-radius:6px;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
+.grow::after,.grow textarea{grid-area:1/1;font:inherit;padding:6px;border:1px solid transparent;border-radius:6px;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;line-height:1.4}
 .grow::after{content:attr(data-v) " ";visibility:hidden}
-.grow textarea{resize:none;overflow:hidden;background:transparent;width:100%;min-width:0;height:100%}
+.grow textarea{resize:none;overflow:hidden;background:transparent;width:100%;min-width:0;height:100%;font-family:var(--cause-font-family);font-size:var(--cause-font-size)}
 .grow textarea:hover{border-color:var(--line)}.grow textarea:focus{background:#fff}
 td select{border-color:transparent;background:transparent;padding:6px;text-align:center;text-align-last:center}
 td select:hover{border-color:var(--line)}
@@ -71,7 +71,7 @@ td select:hover{border-color:var(--line)}
 #sg div,#cb div{padding:7px 10px;cursor:pointer;font-size:15px;border-bottom:1px solid rgba(0,0,0,.06)}
 #sg div small{display:block;color:var(--teal);font-weight:700}
 #sg div.on,#sg div:hover,#cb div.on,#cb div:hover{background:rgba(20,163,161,.14)}
-.cbi{border-color:transparent;background-color:transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2314a3a1'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center;padding:6px 16px 6px 4px;text-align:center;cursor:pointer;text-overflow:ellipsis}
+.cbi{font-family:var(--cause-font-family);font-size:var(--cause-font-size);border-color:transparent;background-color:transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2314a3a1'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center;padding:6px 16px 6px 4px;text-align:center;cursor:pointer;text-overflow:ellipsis}
 .cbi:hover{border-color:var(--line);background-color:rgba(255,255,255,.48)}
 .cbi::placeholder{color:#8a9aaa}
 .note strong{color:var(--acc)}
@@ -98,12 +98,13 @@ td select:hover{border-color:var(--line)}
 @media (max-width:700px){.wrap{padding:9px}.card{padding:10px}.bar{gap:6px}.bar button{flex:1 1 auto}}
 #printHead{display:none}
 @media (max-width:700px){.head{grid-template-columns:1fr}}
-.pv{display:none}
+.pv{display:none}\n#causeTable td .pv{display:block;min-height:1.2em;white-space:normal;overflow-wrap:anywhere;word-break:normal;font-family:var(--cause-font-family);font-size:var(--cause-font-size);line-height:1.25;cursor:text}\n#causeTable td .cbi{display:none}\n#causeTable td:focus-within .cbi{display:block}\n#causeTable td:focus-within .pv{display:block}
+#causeTable td .cbi:focus+.pv{display:none}\n#causeTable td .pv:focus-visible{outline:2px solid var(--teal);outline-offset:1px;border-radius:3px}\n.font-bar{align-items:center}\n.font-bar select{font-family:inherit}
 @page{size:A4 portrait;margin:9mm 8mm}
 @page landscapeCauseList{size:A4 landscape;margin:7mm 7mm}
 @media print{
   body.print-landscape{page:landscapeCauseList}
-  body.print-landscape table{font-size:9.5pt}
+  body.print-landscape table{font-family:var(--cause-font-family);font-size:var(--cause-font-size)}
   body.print-landscape th,body.print-landscape td{padding:2px 4px!important;line-height:1.15}
   body.print-landscape th:nth-child(1){width:5%}
   body.print-landscape th:nth-child(2){width:8%}
@@ -112,7 +113,7 @@ td select:hover{border-color:var(--line)}
   body.print-landscape th:nth-child(5){width:39%}
   body.print-landscape th:nth-child(6){width:12%}
   body.print-landscape th:nth-child(7){width:17%}
-  body.print-landscape .grow::after,body.print-landscape .grow textarea{font-size:9.5pt;line-height:1.15}
+  body.print-landscape .grow::after,body.print-landscape .grow textarea{font-family:var(--cause-font-family);font-size:var(--cause-font-size);line-height:1.15}
   body.print-landscape #printHead h1{font-size:15pt}
   body.print-landscape #printHead div{font-size:10pt}
 
@@ -124,20 +125,20 @@ td select:hover{border-color:var(--line)}
   #printHead h1{font-size:16pt;margin:0;line-height:1.2}
   #printHead div{font-size:10.5pt;line-height:1.2}
   .tw{overflow:visible}
-  table{min-width:0!important;width:100%;table-layout:fixed;font-size:10.5pt;border-collapse:collapse}
-  th,td{border:1px solid #000;padding:2px 3px!important;line-height:1.2;color:#000!important;background:#fff!important;min-width:0!important;max-width:none!important;width:auto}
-  th{background:#eee!important;font-size:10.5pt;border-bottom:1px solid #000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table{min-width:0!important;width:100%;table-layout:fixed;font-family:var(--cause-font-family)!important;font-size:var(--cause-font-size)!important;border-collapse:collapse}
+  th,td{border:1px solid #000;padding:2px 3px!important;line-height:1.2;color:#000!important;background:#fff!important;min-width:0!important;max-width:none!important;width:auto;font-family:var(--cause-font-family)!important;font-size:var(--cause-font-size)!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important}
+  th{background:#eee!important;font-family:var(--cause-font-family)!important;font-size:var(--cause-font-size)!important;border-bottom:1px solid #000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   th:nth-child(1){width:6%}th:nth-child(2){width:8%}th:nth-child(3){width:11%}th:nth-child(4){width:10%}
   th:nth-child(5){width:38%}th:nth-child(6){width:14%}th:nth-child(7){width:13%}
   tr{break-inside:avoid;page-break-inside:avoid}
   thead{display:table-header-group}
   td.pt .pp{gap:3px}
-  td.pt .pp span{color:#000!important;font-size:10pt}
-  .grow::after,.grow textarea{padding:0!important;border:0!important;font-size:10.5pt;line-height:1.2;color:#000!important}
+  td.pt .pp span{color:#000!important;font-family:var(--cause-font-family)!important;font-size:var(--cause-font-size)!important}
+  .grow::after,.grow textarea{padding:0!important;border:0!important;font-family:var(--cause-font-family)!important;font-size:var(--cause-font-size)!important;line-height:1.2;color:#000!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
   .cbi{display:none!important}
   body::before,body::after{display:none}
   .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:none!important}
-  .pv{display:block;font-size:10.5pt;line-height:1.2;overflow-wrap:anywhere}
+  .pv{display:block!important;font-family:var(--cause-font-family)!important;font-size:var(--cause-font-size)!important;line-height:1.2;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important}
   ::placeholder{color:transparent!important}
 }
 </style>
@@ -157,7 +158,7 @@ td select:hover{border-color:var(--line)}
 <div class="card">
   <div id="printHead"><h1 id="pTitle"></h1><div id="pSub"></div></div>
   <div class="tw">
-    <table>
+    <table id="causeTable">
       <thead><tr>
         <th>Sl. No.</th><th>Court</th><th>Type</th><th>Case No.</th><th>Parties</th><th>For</th><th>Remarks</th><th class="ac"></th>
       </tr></thead>
@@ -192,6 +193,33 @@ td select:hover{border-color:var(--line)}
     <span class="sp"></span>
     <button class="tl" onclick="saveDay()">Save this day</button>
     <button class="alt" onclick="newDay()">New list</button>
+  </div>
+  <div class="bar font-bar" style="margin-top:9px">
+    <label for="causeFontFamily" style="display:flex;align-items:center;gap:6px;margin:0;color:var(--acc);font-size:14px">
+      Font
+      <select id="causeFontFamily" onchange="setCauseFontFamily(this.value)" style="width:auto;min-width:150px;padding:7px 24px 7px 8px">
+        <option value="times">Times New Roman</option>
+        <option value="arial">Arial</option>
+        <option value="calibri">Calibri</option>
+        <option value="georgia">Georgia</option>
+        <option value="verdana">Verdana</option>
+      </select>
+    </label>
+    <label for="causeFontSize" style="display:flex;align-items:center;gap:6px;margin:0;color:var(--acc);font-size:14px">
+      Font size
+      <select id="causeFontSize" onchange="setCauseFontSize(this.value)" style="width:auto;min-width:92px;padding:7px 24px 7px 8px">
+        <option value="12">12 px</option>
+        <option value="13">13 px</option>
+        <option value="14">14 px</option>
+        <option value="15">15 px</option>
+        <option value="16">16 px</option>
+        <option value="17">17 px</option>
+        <option value="18">18 px</option>
+        <option value="20">20 px</option>
+        <option value="22">22 px</option>
+      </select>
+    </label>
+    <span class="note">Long text wraps within cells; larger text may increase row height and printed page count.</span>
   </div>
   <div class="bar" style="margin-top:10px">
     <span class="note">Autosaves locally and syncs Google Drive across signed-in devices (background check every 7 seconds). Edit dropdown lists from the side menu.</span>
@@ -342,7 +370,7 @@ function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");setTi
 
 /* ---------- type-to-search dropdown cells ---------- */
 function cbHtml(i,k,v){
-  return `<input class="cbi" value="${esc(v)}" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-haspopup="listbox" aria-expanded="false" title="Type to search options; use arrow keys and Enter to select" data-i="${i}" data-k="${k}" onfocus="cbFocus(this)" oninput="cbShow(this,this.value)" onkeydown="cbKey(event)" onblur="cbBlur(this)"><span class="pv">${esc(v)}</span>`;
+  return `<input class="cbi" value="${esc(v)}" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-haspopup="listbox" aria-expanded="false" title="Type to search options; use arrow keys and Enter to select" data-i="${i}" data-k="${k}" onfocus="cbFocus(this)" oninput="cbShow(this,this.value)" onkeydown="cbKey(event)" onblur="cbBlur(this)"><span class="pv" role="button" tabindex="0" title="Click or press Enter to edit" onclick="this.previousElementSibling.focus()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.previousElementSibling.focus()}">${esc(v)}</span>`;
 }
 let cb={el:null,items:[],sel:-1,hold:false},cbT=0,RENDERING=false;
 const cbBox=$("cb");
@@ -1048,6 +1076,37 @@ function scheduleDriveAutosave(){
 }
 
 
+const CAUSE_STYLE_KEY="causelist_typography_v1";
+const CAUSE_FONTS={
+  times:"'Times New Roman',Times,serif",
+  arial:"Arial,Helvetica,sans-serif",
+  calibri:"Calibri,Arial,sans-serif",
+  georgia:"Georgia,serif",
+  verdana:"Verdana,Geneva,sans-serif"
+};
+const CAUSE_SIZES=[12,13,14,15,16,17,18,20,22];
+function applyCauseTypography(family,size,save=true){
+  const f=Object.prototype.hasOwnProperty.call(CAUSE_FONTS,family)?family:"times";
+  const n=CAUSE_SIZES.includes(Number(size))?Number(size):14;
+  document.documentElement.style.setProperty("--cause-font-family",CAUSE_FONTS[f]);
+  document.documentElement.style.setProperty("--cause-font-size",n+"px");
+  const ff=document.getElementById("causeFontFamily"),fs=document.getElementById("causeFontSize");
+  if(ff)ff.value=f;if(fs)fs.value=String(n);
+  if(save){try{localStorage.setItem(CAUSE_STYLE_KEY,JSON.stringify({family:f,size:n}))}catch(e){}}
+}
+function setCauseFontFamily(value){
+  const size=Number(document.getElementById("causeFontSize")?.value||14);
+  applyCauseTypography(value,size,true);
+}
+function setCauseFontSize(value){
+  const family=document.getElementById("causeFontFamily")?.value||"times";
+  applyCauseTypography(family,Number(value),true);
+}
+function restoreCauseTypography(){
+  let saved={};
+  try{saved=JSON.parse(localStorage.getItem(CAUSE_STYLE_KEY)||"{}")||{}}catch(e){}
+  applyCauseTypography(saved.family||"times",saved.size||14,false);
+}
 const PRINT_ORIENTATION_KEY="causelist_print_orientation_v1";
 function setPrintOrientation(value){
   const orientation=value==="landscape"?"landscape":"portrait";
@@ -1070,6 +1129,7 @@ window.addEventListener("afterprint",()=>{
 
 load();historyInit();render();renderAccount();
 try{setPrintOrientation(localStorage.getItem(PRINT_ORIENTATION_KEY)||"portrait")}catch(e){setPrintOrientation("portrait")}
+restoreCauseTypography();
 // Restore the signed-in experience after reload where Google's browser session
 // permits a quiet token refresh. No access token is stored in localStorage.
 if(localStorage.getItem(GOOGLE_LOGIN_PREF_KEY)){
