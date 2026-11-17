@@ -1025,7 +1025,29 @@ function scheduleDriveAutosave(){
   driveSaveTimer=setTimeout(()=>saveToGoogleDrive(),1200);
 }
 
+
+const PRINT_ORIENTATION_KEY="causelist_print_orientation_v1";
+function setPrintOrientation(value){
+  const orientation=value==="landscape"?"landscape":"portrait";
+  document.body.classList.toggle("print-landscape",orientation==="landscape");
+  const control=document.getElementById("printOrientation");
+  if(control && control.value!==orientation)control.value=orientation;
+  try{localStorage.setItem(PRINT_ORIENTATION_KEY,orientation)}catch(e){}
+}
+function printCauseList(){
+  const control=document.getElementById("printOrientation");
+  setPrintOrientation(control?control.value:"portrait");
+  // Let the browser apply the selected page box before opening the print dialog.
+  requestAnimationFrame(()=>window.print());
+}
+window.addEventListener("afterprint",()=>{
+  // Keep the chosen orientation selected for the next print; do not reset it.
+  const control=document.getElementById("printOrientation");
+  if(control)setPrintOrientation(control.value);
+});
+
 load();historyInit();render();renderAccount();
+try{setPrintOrientation(localStorage.getItem(PRINT_ORIENTATION_KEY)||"portrait")}catch(e){setPrintOrientation("portrait")}
 // Restore the signed-in experience after reload where Google's browser session
 // permits a quiet token refresh. No access token is stored in localStorage.
 if(localStorage.getItem(GOOGLE_LOGIN_PREF_KEY)){
