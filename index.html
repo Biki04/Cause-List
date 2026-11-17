@@ -186,6 +186,7 @@ const DEF={
 };
 const NAMES={court:"Court",type:"Type",forr:"For"};
 const K="causelist_v1",CK="causelist_cases_v1",SK="causelist_days_v1";
+const CLEAN_START_KEY="causelist_clean_start_v2";
 let S,CASES=[];
 // Undo/redo history stores meaningful Cause List state snapshots (not transient UI state).
 const HISTORY_LIMIT=100;
@@ -198,15 +199,20 @@ const blank=()=>({court:"",type:"",no:"",p1:"",p2:"",forr:"",rem:"",cid:""});
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 function load(){
+  // One-time clean start for this release: remove old local case data and saved lists.
+  // The marker prevents the app from clearing data again on subsequent visits.
+  if(!localStorage.getItem(CLEAN_START_KEY)){
+    try{localStorage.removeItem(K);localStorage.removeItem(CK);localStorage.removeItem(SK);}catch(e){}
+    try{localStorage.setItem(CLEAN_START_KEY,"done");}catch(e){}
+  }
   try{S=JSON.parse(localStorage.getItem(K))}catch(e){S=null}
-  if(!S||!S.rows)S={title:"Cause List",date:today(),place:"",rows:[blank()],lists:DEF};
+  if(!S||!S.rows)S={title:"Cause List",date:today(),place:"",rows:[blank()],lists:JSON.parse(JSON.stringify(DEF))};
   S.lists=Object.assign({},DEF,S.lists||{});
   try{CASES=JSON.parse(localStorage.getItem(CK))}catch(e){CASES=null}
-  if(!Array.isArray(CASES)){
-    CASES=[["DJ","TA","74/26","Lalan Pal","Renuka Nath"],["I","TS","288/24","Sumonto Lahiri","Nityananda Saha"],["I","TS","81/25","Achinta Pramanik","Tumpa Halder"],["I","TS","158/20","Tapan Kanta Dutta","Narayan Ch. Dey"],["II","TS","93/19","Kanailal Das Goswami","Paritosh Biswas"],["SJ1","TS","32/89","Abu Taleb Mondal","Alam Dafadar"],["SJ2","TS","173/26","Yeadul SK","Fakir SK"],["SJ3","TS","101/14","Madhsudan Mondal","Nabakumar Ghosh"],["SJ3","TS","9/22","Mousam Datta","Chanchal Dutta"],["SJ3","TS","48/25","Sadhan Halder","Swapan Biswas"],["SJ3","TS","303/23","Sailen Mondal","Amit Biswas"],["SJ3","TS","46/15","Aloke Biswas","Nikhil Nandy"]]
-      .map(a=>({id:uid(),court:a[0],type:a[1],no:a[2],p1:a[3],p2:a[4]}));
-    saveCases();
-  }
+  // Start with an empty case-memory list; no sample names or case details are bundled.
+  if(!Array.isArray(CASES))CASES=[];
+  saveCases();
+  try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
 }
 function persist(){
   try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
