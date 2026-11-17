@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cause List</title>
+<style>
+:root{--bg:#f5f9fb;--card:#fff;--ink:#16263a;--mut:#5f7387;--line:#d6e2ea;--acc:#1b4f8a;--acc2:#eaf2fa;--teal:#14a3a1;--teal2:#e6f6f5;--red:#b42318;--glass:rgba(255,255,255,.58);--glass-line:rgba(255,255,255,.76)}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.4 'Times New Roman',Times,serif;background:linear-gradient(135deg,#e6f0fa 0%,#f6fafc 50%,#e2f5f4 100%) fixed;color:var(--ink);min-height:100vh;background-attachment:fixed}
+body::before,body::after{content:"";position:fixed;z-index:-1;pointer-events:none;border-radius:50%}
+body::before{width:50vmax;height:50vmax;left:-16vmax;top:-20vmax;background:radial-gradient(circle,rgba(27,79,138,.22),transparent 66%)}
+body::after{width:46vmax;height:46vmax;right:-14vmax;bottom:-18vmax;background:radial-gradient(circle,rgba(20,163,161,.22),transparent 66%)}
+.wrap{max-width:1100px;margin:0 auto;padding:14px}
+.card{background:var(--glass);-webkit-backdrop-filter:blur(15px) saturate(145%);backdrop-filter:blur(15px) saturate(145%);border:1px solid var(--glass-line);border-top:3px solid rgba(20,163,161,.82);border-radius:14px;padding:14px;margin-bottom:13px;box-shadow:0 7px 24px rgba(27,79,138,.075),inset 0 1px 0 rgba(255,255,255,.58)}
+.head{display:grid;grid-template-columns:2fr 1fr 1.5fr;gap:10px}
+label{display:block;font-size:13px;color:var(--acc);font-weight:700;margin-bottom:3px}
+input,select,textarea,button{font-family:'Times New Roman',Times,serif}
+input,select,textarea{width:100%;font:inherit;padding:7px 8px;border:1px solid rgba(190,207,222,.82);border-radius:7px;background:rgba(255,255,255,.78);color:var(--ink);box-shadow:inset 0 1px 2px rgba(27,79,138,.025);transition:border-color .15s,background .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:2px solid rgba(20,163,161,.72);outline-offset:-1px;border-color:var(--teal);background:rgba(255,255,255,.96);box-shadow:0 0 0 3px rgba(20,163,161,.08)}
+button{font:inherit;font-family:'Times New Roman',Times,serif;padding:8px 12px;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:6px;cursor:pointer}
+button{transition:background .16s,border-color .16s,box-shadow .16s,transform .16s}button:hover{background:#163f70;box-shadow:0 3px 10px rgba(27,79,138,.12)}button:active{transform:translateY(1px)}button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+button.alt{background:rgba(255,255,255,.54);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--acc);border-color:rgba(185,205,227,.86)}
+button.alt:hover{background:var(--teal2);border-color:var(--teal);color:#0d7c7a}
+button.tl{background:var(--teal);border-color:var(--teal)}button.tl:hover{background:#0f8c8a}
+button.del{background:#fff;color:var(--red);border-color:var(--line);padding:6px 9px}button.del:hover{background:#fdecea;border-color:var(--red)}
+button.mv{background:#fff;color:var(--acc);border-color:var(--line);padding:4px 7px;font-size:12px}button.mv:hover{background:var(--teal2);color:#0d7c7a;border-color:var(--teal)}
+button:disabled{opacity:.42;cursor:not-allowed;box-shadow:none;transform:none}
+button:disabled:hover{background:rgba(255,255,255,.54);border-color:rgba(185,205,227,.86);color:var(--acc);box-shadow:none}
+.history-btn{min-width:82px;font-weight:700}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border:1px solid rgba(255,255,255,.62);border-radius:10px;background:rgba(255,255,255,.27);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
+.sp{flex:1}
+.tw{overflow-x:auto;border:1px solid rgba(255,255,255,.78);border-radius:10px;background:rgba(255,255,255,.24);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+table{border-collapse:collapse;width:100%;min-width:900px}
+th{background:rgba(231,240,250,.88);color:var(--acc);text-align:center;font-size:14px;font-weight:700;letter-spacing:.2px;padding:8px 7px;border:1px solid var(--line);border-bottom:2px solid var(--teal)}
+td{border:1px solid var(--line);padding:3px;vertical-align:middle;text-align:center}
+td.sl{width:44px;font-weight:700;color:var(--teal);background:rgba(230,246,245,.8)}
+tbody tr:nth-child(even) td:not(.sl){background:rgba(240,247,252,.55)}
+tbody tr:hover td:not(.sl){background:rgba(224,240,250,.82)}
+td.pt{min-width:300px}
+td.pt .pp{display:flex;gap:4px;align-items:center}
+td.pt .pp span{color:var(--teal);font-size:14px;font-style:italic;font-weight:700}
+td.ac{width:92px;white-space:nowrap}
+td.no{min-width:76px;width:80px;max-width:88px}
+td.cr{min-width:78px;width:84px}
+td.ty{min-width:128px;width:140px}
+td.fr{min-width:120px}
+td.cr select,td.ty select,td.fr select{padding-left:2px;padding-right:2px}
+/* auto-growing, centred, wrapping text boxes */
+.grow{display:grid;width:100%;min-width:0;flex:1}
+.grow::after,.grow textarea{grid-area:1/1;font:inherit;padding:6px;border:1px solid transparent;border-radius:6px;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
+.grow::after{content:attr(data-v) " ";visibility:hidden}
+.grow textarea{resize:none;overflow:hidden;background:transparent;width:100%;min-width:0;height:100%}
+.grow textarea:hover{border-color:var(--line)}.grow textarea:focus{background:#fff}
+td select{border-color:transparent;background:transparent;padding:6px;text-align:center;text-align-last:center}
+td select:hover{border-color:var(--line)}
+.lists{display:none;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px}
+.lists.show{display:grid}
+.lists textarea{min-height:90px}
+#dayPanel{display:none;margin-top:10px}#dayPanel.show{display:block}
+#dayList{max-height:240px;overflow:auto;border:1px solid rgba(190,207,222,.72);border-radius:8px;background:rgba(255,255,255,.48);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#dayList .dr{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #eef3f6}
+#dayList .dr:last-child{border-bottom:0}#dayList .dr b{color:var(--acc)}
+#mgr{display:none;margin-top:10px}#mgr.show{display:block}
+#mgrList{max-height:220px;overflow:auto;border:1px solid rgba(190,207,222,.72);border-radius:8px;margin-top:6px;background:rgba(255,255,255,.48);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#mgrList div{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 8px;border-bottom:1px solid #eef3f6;font-size:15px}
+.note{color:var(--mut);font-size:13px}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(27,79,138,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:3px solid var(--teal);color:#fff;padding:8px 14px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none}
+#toast.on{opacity:1}
+#sg,#cb{position:fixed;display:none;z-index:50;background:rgba(250,253,255,.88);-webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);border:1px solid rgba(20,163,161,.72);border-radius:9px;box-shadow:0 9px 28px rgba(17,47,75,.16),inset 0 1px 0 rgba(255,255,255,.8);max-height:280px;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;text-align:left}
+#sg div,#cb div{padding:7px 10px;cursor:pointer;font-size:15px;border-bottom:1px solid rgba(0,0,0,.06)}
+#sg div small{display:block;color:var(--teal);font-weight:700}
+#sg div.on,#sg div:hover,#cb div.on,#cb div:hover{background:rgba(20,163,161,.14)}
+.cbi{border-color:transparent;background-color:transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2314a3a1'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center;padding:6px 16px 6px 4px;text-align:center;cursor:pointer;text-overflow:ellipsis}
+.cbi:hover{border-color:var(--line);background-color:rgba(255,255,255,.48)}
+.cbi::placeholder{color:#8a9aaa}
+.note strong{color:var(--acc)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+@media (max-width:700px){.wrap{padding:9px}.card{padding:10px}.bar{gap:6px}.bar button{flex:1 1 auto}}
+#printHead{display:none}
+@media (max-width:700px){.head{grid-template-columns:1fr}}
+.pv{display:none}
+@page{size:A4 portrait;margin:9mm 8mm}
+@media print{
+  html,body{background:#fff;margin:0;padding:0;font-size:11pt}
+  .wrap{padding:0;max-width:none;margin:0}
+  .noprint,.ac,th.ac,#sg,#cb,#toast{display:none!important}
+  .card{border:0!important;padding:0;margin:0;box-shadow:none;border-radius:0}
+  #printHead{display:block;text-align:center;margin:0 0 4px}
+  #printHead h1{font-size:16pt;margin:0;line-height:1.2}
+  #printHead div{font-size:10.5pt;line-height:1.2}
+  .tw{overflow:visible}
+  table{min-width:0!important;width:100%;table-layout:fixed;font-size:10.5pt;border-collapse:collapse}
+  th,td{border:1px solid #000;padding:2px 3px!important;line-height:1.2;color:#000!important;background:#fff!important;min-width:0!important;max-width:none!important;width:auto}
+  th{background:#eee!important;font-size:10.5pt;border-bottom:1px solid #000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  th:nth-child(1){width:6%}th:nth-child(2){width:8%}th:nth-child(3){width:11%}th:nth-child(4){width:10%}
+  th:nth-child(5){width:38%}th:nth-child(6){width:14%}th:nth-child(7){width:13%}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  thead{display:table-header-group}
+  td.pt .pp{gap:3px}
+  td.pt .pp span{color:#000!important;font-size:10pt}
+  .grow::after,.grow textarea{padding:0!important;border:0!important;font-size:10.5pt;line-height:1.2;color:#000!important}
+  .cbi{display:none!important}
+  body::before,body::after{display:none}
+  .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:none!important}
+  .pv{display:block;font-size:10.5pt;line-height:1.2;overflow-wrap:anywhere}
+  ::placeholder{color:transparent!important}
+}
+</style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>\n</head>
+<body>
+<div class="wrap">
+
+<div class="card noprint">
+  <div class="head">
+    <div><label>Heading</label><input id="title" value="Cause List" placeholder="e.g. Cause List" style="text-align:center;font-weight:700;font-size:18px;color:var(--acc)"></div>
+    <div><label>Date</label><input id="date" type="date" style="text-align:center"></div>
+    <div><label>Place</label><input id="place" placeholder="e.g. Krishnanagar" style="text-align:center"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div id="printHead"><h1 id="pTitle"></h1><div id="pSub"></div></div>
+  <div class="tw">
+    <table>
+      <thead><tr>
+        <th>Sl. No.</th><th>Court</th><th>Type</th><th>Case No.</th><th>Parties</th><th>For</th><th>Remarks</th><th class="ac"></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="bar noprint" style="margin-top:10px">
+    <button class="tl" onclick="addRow()">+ Add case</button>
+    <button class="alt" onclick="addRow(true)">+ Copy last row's court &amp; type</button>
+    <button onclick="sortCourt()" title="Sort rows using the order in Edit dropdown lists → Court options">⇅ Sort by Court List</button>
+    <button class="alt history-btn" id="undoBtn" onclick="historyUndo()" title="Undo last change (Ctrl+Z)" aria-label="Undo last change" disabled>↶ Undo</button>
+    <button class="alt history-btn" id="redoBtn" onclick="historyRedo()" title="Redo last undone change (Ctrl+Y)" aria-label="Redo last undone change" disabled>↷ Redo</button>
+    <span class="sp"></span>
+    <span class="note" id="count"></span>
+  </div>
+  <div class="note noprint" style="margin-top:7px">Court order follows <strong>Edit dropdown lists → Court options</strong> from top to bottom. Courts not in that list are kept at the end; rows within the same court keep their current order.</div>
+  <div class="note noprint" style="margin-top:4px">Tip: Court, Type and For cells are searchable dropdowns — type a few letters, use ↑ / ↓ to choose, then press Enter. Case number and party fields also suggest saved cases as you type.</div>
+</div>
+
+<div class="card noprint">
+  <div class="bar">
+    <button onclick="window.print()">Print / Save PDF</button>
+    <button class="alt" onclick="copyText()">Copy as text</button>
+    <button class="alt" onclick="dlCSV()">Download Excel (CSV)</button>
+    <span class="sp"></span>
+    <button class="tl" onclick="saveDay()">Save this day</button>
+    <button class="alt" onclick="toggleDays()">Saved days</button>
+    <button class="alt" onclick="newDay()">New list</button>
+  </div>
+  <div class="bar" style="margin-top:10px">
+    <button class="alt" onclick="document.getElementById('lists').classList.toggle('show')">Edit dropdown lists</button>
+    <button class="alt" onclick="toggleMgr()">Manage saved cases</button>
+    <button class="alt" onclick="backup()">⬇ Backup all data</button>
+    <button class="alt" onclick="document.getElementById('restoreFile').click()">⬆ Restore / merge backup</button>
+    <input type="file" id="restoreFile" accept=".json,application/json" style="display:none" onchange="restore(this)">
+    <span class="sp"></span>
+    <button class="alt" id="googleSignInBtn" onclick="googleSignIn()">Sign in with Google</button>
+    <button class="tl" id="googleSaveBtn" onclick="saveToGoogleDrive()" disabled>Save to Google Drive</button>
+    <button class="alt" id="googleLoadBtn" onclick="loadFromGoogleDrive()" disabled>Load from Google Drive</button>
+    <span class="note" id="googleStatus" aria-live="polite">Google Drive not connected</span>
+    <span class="note">Autosaves in this browser. Works fully offline.</span>
+  </div>
+  <div id="dayPanel"><div id="dayList"></div></div>
+  <div class="lists" id="lists"></div>
+  <div id="mgr">
+    <input id="mgrQ" placeholder="Search saved cases…" oninput="renderMgr()">
+    <div id="mgrList"></div>
+  </div>
+</div>
+
+</div>
+<div id="sg"></div>
+<div id="cb"></div>
+<div id="toast"></div>
+
+<script>
+const DEF={
+  court:["I","II","III","Addl. Mun","SJ1","SJ2","SJ3","ADJ 1","ADJ 2","ADJ 3","ADJ 4","ADJ 5","DJ","EM","SDLRO"],
+  type:["TS","TA","T. Ex","Misc. Pre.","Civil Misc","Money Ex.","Misc. Adoption"],
+  forr:["Adm. Hng","Plaint","WS","WO","W/O","PW","DW","Order","S/R","Steps","Exp. Hrg.","Requisites","Evidence","A/C","Argument","Pet. Hng.","Further (Arg/Hrg)","Appearance"]
+};
+const NAMES={court:"Court",type:"Type",forr:"For"};
+const K="causelist_v1",CK="causelist_cases_v1",SK="causelist_days_v1";
+let S,CASES=[];
+// Undo/redo history stores meaningful Cause List state snapshots (not transient UI state).
+const HISTORY_LIMIT=100;
+let undoHistory=[],redoHistory=[],historyLast="",historyTimer=null,historyApplying=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const fmtDate=v=>v?v.split("-").reverse().join("/"):"";
+const blank=()=>({court:"",type:"",no:"",p1:"",p2:"",forr:"",rem:"",cid:""});
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+function load(){
+  try{S=JSON.parse(localStorage.getItem(K))}catch(e){S=null}
+  if(!S||!S.rows)S={title:"Cause List",date:today(),place:"",rows:[blank()],lists:DEF};
+  S.lists=Object.assign({},DEF,S.lists||{});
+  try{CASES=JSON.parse(localStorage.getItem(CK))}catch(e){CASES=null}
+  if(!Array.isArray(CASES)){
+    CASES=[["DJ","TA","74/26","Lalan Pal","Renuka Nath"],["I","TS","288/24","Sumonto Lahiri","Nityananda Saha"],["I","TS","81/25","Achinta Pramanik","Tumpa Halder"],["I","TS","158/20","Tapan Kanta Dutta","Narayan Ch. Dey"],["II","TS","93/19","Kanailal Das Goswami","Paritosh Biswas"],["SJ1","TS","32/89","Abu Taleb Mondal","Alam Dafadar"],["SJ2","TS","173/26","Yeadul SK","Fakir SK"],["SJ3","TS","101/14","Madhsudan Mondal","Nabakumar Ghosh"],["SJ3","TS","9/22","Mousam Datta","Chanchal Dutta"],["SJ3","TS","48/25","Sadhan Halder","Swapan Biswas"],["SJ3","TS","303/23","Sailen Mondal","Amit Biswas"],["SJ3","TS","46/15","Aloke Biswas","Nikhil Nandy"]]
+      .map(a=>({id:uid(),court:a[0],type:a[1],no:a[2],p1:a[3],p2:a[4]}));
+    saveCases();
+  }
+}
+function persist(){
+  try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
+  if(!historyApplying)historySchedule();
+}
+function saveCases(){try{localStorage.setItem(CK,JSON.stringify(CASES))}catch(e){} scheduleDriveAutosave();}
+function historySnapshot(){
+  // Case-memory IDs are internal links; exclude them so remembering a case is not a separate undo step.
+  const state=JSON.parse(JSON.stringify(S));
+  if(state&&Array.isArray(state.rows))state.rows.forEach(row=>{delete row.cid;});
+  return JSON.stringify(state);
+}
+function historyUpdateButtons(){
+  const u=$("undoBtn"),r=$("redoBtn");
+  if(u)u.disabled=undoHistory.length===0;
+  if(r)r.disabled=redoHistory.length===0;
+}
+function historyCommit(){
+  if(!S||historyApplying)return;
+  clearTimeout(historyTimer);historyTimer=null;
+  const snap=historySnapshot();
+  if(snap===historyLast){historyUpdateButtons();return;}
+  undoHistory.push(historyLast);
+  if(undoHistory.length>HISTORY_LIMIT)undoHistory.shift();
+  redoHistory=[];
+  historyLast=snap;
+  historyUpdateButtons();
+}
+function historySchedule(){
+  if(!S||historyApplying)return;
+  clearTimeout(historyTimer);
+  // Group continuous typing into a single undo step.
+  historyTimer=setTimeout(historyCommit,450);
+}
+function historyCheckpoint(){historyCommit();}
+function historyInit(){
+  clearTimeout(historyTimer);undoHistory=[];redoHistory=[];historyLast=historySnapshot();historyUpdateButtons();
+}
+function historyApply(from,to,message){
+  historyCommit();
+  if(!from.length){toast(message==="Undo"?"Nothing to undo":"Nothing to redo");return;}
+  const current=historySnapshot();
+  to.push(current);
+  const target=from.pop();
+  historyApplying=true;
+  try{
+    S=JSON.parse(target);
+    try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
+  }finally{historyApplying=false;}
+  historyLast=historySnapshot();
+  cbHide();hideSg();render();historyUpdateButtons();
+  toast(message+" completed");
+}
+function historyUndo(){historyApply(undoHistory,redoHistory,"Undo");}
+function historyRedo(){historyApply(redoHistory,undoHistory,"Redo");}
+document.addEventListener("keydown",e=>{
+  if(!(e.ctrlKey||e.metaKey)||e.altKey)return;
+  const key=e.key.toLowerCase();
+  if(key==="z"){
+    e.preventDefault();
+    if(e.shiftKey)historyRedo();else historyUndo();
+  }else if(key==="y"){
+    e.preventDefault();historyRedo();
+  }
+});
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),1600)}
+
+/* ---------- type-to-search dropdown cells ---------- */
+function cbHtml(i,k,v){
+  return `<input class="cbi" value="${esc(v)}" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-haspopup="listbox" aria-expanded="false" title="Type to search options; use arrow keys and Enter to select" data-i="${i}" data-k="${k}" onfocus="cbFocus(this)" oninput="cbShow(this,this.value)" onkeydown="cbKey(event)" onblur="cbBlur(this)"><span class="pv">${esc(v)}</span>`;
+}
+let cb={el:null,items:[],sel:-1,hold:false},cbT=0,RENDERING=false;
+const cbBox=$("cb");
+const cbList=el=>S.lists[el.dataset.k]||[];
+const cbOpen=()=>cbBox.style.display==="block";
+function cbHide(){
+  cbBox.style.display="none";
+  if(cb.el){cb.el.setAttribute("aria-expanded","false");}
+}
+function cbPos(){
+  const el=cb.el;if(!el||!cbOpen())return;
+  const rc=el.getBoundingClientRect();
+  if(rc.bottom<0||rc.top>innerHeight){cbHide();return}
+  cbBox.style.minWidth=Math.max(rc.width,150)+"px";
+  cbBox.style.left=Math.max(4,Math.min(rc.left,innerWidth-Math.max(rc.width,150)-4))+"px";
+  cbBox.style.top=rc.bottom+2+"px";
+  const h=cbBox.offsetHeight;
+  if(rc.bottom+h>innerHeight-4&&rc.top>h)cbBox.style.top=(rc.top-h-2)+"px";
+}
+function cbMark(){
+  [...cbBox.children].forEach((d,n)=>{
+    d.classList.toggle("on",n===cb.sel);
+    d.setAttribute("aria-selected",String(n===cb.sel));
+  });
+  const on=cbBox.children[cb.sel];
+  if(on)cbBox.scrollTop=Math.max(0,on.offsetTop-cbBox.clientHeight/2+on.offsetHeight/2);
+}
+function cbShow(el,q){
+  const n=nz(q),L=cbList(el);
+  // Exact matches first, then starts-with matches, then contains matches.
+  // The original dropdown-list order is retained within each match group.
+  const ranked=L.map((value,index)=>({value,index,key:nz(value)}))
+    .filter(x=>!n||x.key.includes(n))
+    .sort((a,b)=>{
+      const score=x=>!n?0:x.key===n?3:x.key.startsWith(n)?2:1;
+      return score(b)-score(a)||a.index-b.index;
+    });
+  const items=ranked.map(x=>x.value);
+  cb.el=el;cb.items=items;
+  if(!items.length){cbHide();cb.sel=-1;return}
+  const cur=S.rows[+el.dataset.i][el.dataset.k];
+  cb.sel=n?0:items.indexOf(cur);
+  cbBox.setAttribute("role","listbox");
+  cbBox.innerHTML=items.map((o,j)=>`<div role="option" aria-selected="${j===cb.sel}" onmousedown="event.preventDefault();cbPick(${j},false)">${esc(o)}</div>`).join("");
+  cbBox.style.display="block";
+  el.setAttribute("aria-autocomplete","list");
+  el.setAttribute("aria-expanded","true");
+  cbPos();cbMark();
+}
+function cbFocus(el){el.select();cbShow(el,"")}
+function cbSet(el,val){
+  const i=+el.dataset.i,k=el.dataset.k;
+  historyCheckpoint();
+  S.rows[i][k]=val;el.value=val;
+  const sp=el.nextElementSibling;if(sp&&sp.classList.contains("pv"))sp.textContent=val;
+  persist();if(k!=="forr")remember(i);
+}
+function cbCommit(el){
+  const v=el.value.trim();
+  if(!v){cbSet(el,"");return true}
+  const m=cbList(el).find(o=>nz(o)===nz(v));
+  if(m){cbSet(el,m);return true}
+  return false;
+}
+function cbPick(n,go){
+  const el=cb.el,c=cb.items[n];if(!el||c===undefined)return;
+  cbSet(el,c);cbHide();
+  if(go)nav(el);else el.blur();
+}
+function cbKey(e){
+  if(e.isComposing)return;
+  const el=e.target;
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    e.preventDefault();
+    if(!cbOpen()){cbShow(el,el.value);return}
+    if(!cb.items.length)return;
+    cb.sel=(cb.sel+(e.key==="ArrowDown"?1:-1)+cb.items.length)%cb.items.length;
+    cbMark();return;
+  }
+  if(e.key==="Enter"){
+    e.preventDefault();
+    // Enter confirms the highlighted suggestion (or the exact typed option).
+    if(cbOpen()&&cb.sel>=0){cbPick(cb.sel,true);return}
+    if(cbCommit(el)){cbHide();nav(el)}
+    else toast("No matching option — use 'Edit dropdown lists' to add it");
+    return;
+  }
+  if(e.key==="Tab"&&cbOpen()&&el.value.trim()&&cb.sel>=0){cbSet(el,cb.items[cb.sel]);return}
+  if(e.key==="Escape"){
+    cbHide();el.value=S.rows[+el.dataset.i][el.dataset.k];
+  }
+}
+function cbBlur(el){
+  if(cb.hold||RENDERING||!el.isConnected)return;
+  if(!cbCommit(el))el.value=S.rows[+el.dataset.i][el.dataset.k];
+  if(cb.el===el)cbHide();
+}
+["touchstart","pointerdown","wheel"].forEach(ev=>cbBox.addEventListener(ev,()=>{cb.hold=true;clearTimeout(cbT);cbT=setTimeout(()=>cb.hold=false,2500)},{passive:true}));
+["touchend","touchcancel"].forEach(ev=>cbBox.addEventListener(ev,()=>{clearTimeout(cbT);cbT=setTimeout(()=>cb.hold=false,1500)},{passive:true}));
+window.addEventListener("scroll",e=>{if(cbOpen()&&e.target!==cbBox&&!cbBox.contains(e.target))cbPos()},true);
+window.addEventListener("resize",cbPos);
+if(window.visualViewport)visualViewport.addEventListener("resize",cbPos);
+document.addEventListener("pointerdown",e=>{
+  if(!cbOpen()||cbBox.contains(e.target)||(e.target.classList&&e.target.classList.contains("cbi")))return;
+  cb.hold=false;const el=cb.el;
+  if(el&&el.isConnected&&!cbCommit(el))el.value=S.rows[+el.dataset.i][el.dataset.k];
+  cbHide();
+});
+function tb(i,k,v,ph){
+  return `<div class="grow" data-v="${esc(v)}"><textarea rows="1" placeholder="${ph}" oninput="g(this,${i},'${k}')" onchange="remember(${i})" onkeydown="kd(event)" onblur="blurSg()">${esc(v)}</textarea></div>`;
+}
+function render(){
+  $("title").value=S.title;$("date").value=S.date;$("place").value=S.place;
+  RENDERING=true;$("rows").innerHTML=S.rows.map((r,i)=>`<tr>
+    <td class="sl">${i+1}</td>
+    <td class="cr">${cbHtml(i,'court',r.court)}</td>
+    <td class="ty">${cbHtml(i,'type',r.type)}</td>
+    <td class="no">${tb(i,'no',r.no,'')}</td>
+    <td class="pt"><div class="pp">${tb(i,'p1',r.p1,'Petitioner / Plaintiff')}<span>vs</span>${tb(i,'p2',r.p2,'Opposite party')}</div></td>
+    <td class="fr">${cbHtml(i,'forr',r.forr)}</td>
+    <td>${tb(i,'rem',r.rem,'')}</td>
+    <td class="ac"><button class="mv" onclick="mv(${i},-1)">↑</button><button class="mv" onclick="mv(${i},1)">↓</button> <button class="del" onclick="delRow(${i})">✕</button></td>
+  </tr>`).join("");RENDERING=false;
+  $("count").textContent=S.rows.length+" case"+(S.rows.length==1?"":"s");
+  $("pTitle").textContent=S.title;
+  $("pSub").textContent=[fmtDate(S.date),S.place].filter(Boolean).join(" — ");
+  renderLists();renderSaved();renderMgr();
+}
+function up(i,k,v){S.rows[i][k]=v;persist()}
+function g(el,i,k){
+  const nl=/\n/.test(el.value);
+  el.value=el.value.replace(/\n/g,"");
+  el.parentNode.dataset.v=el.value;
+  S.rows[i][k]=el.value;persist();
+  if(nl){nav(el);return}
+  if(k==="no"||k==="p1"||k==="p2")suggest(el,i,k);
+}
+function addRow(copy){
+  historyCheckpoint();
+  const n=blank(),l=S.rows[S.rows.length-1];
+  if(copy&&l){n.court=l.court;n.type=l.type}
+  S.rows.push(n);persist();render();
+  const r=$("rows").lastElementChild;
+  if(r){const f=r.querySelector(copy?"textarea":".cbi,textarea");f&&f.focus()}
+}
+function delRow(i){historyCheckpoint();S.rows.splice(i,1);if(!S.rows.length)S.rows.push(blank());persist();render()}
+function mv(i,d){historyCheckpoint();const j=i+d;if(j<0||j>=S.rows.length)return;[S.rows[i],S.rows[j]]=[S.rows[j],S.rows[i]];persist();render()}
+function sortCourt(){
+  historyCheckpoint();
+  const order=new Map();
+  (S.lists.court||[]).forEach((name,index)=>{
+    const key=nz(name);
+    if(key&&!order.has(key))order.set(key,index);
+  });
+  // Stable sort: matching courts follow the Court list top-to-bottom.
+  // Unlisted/blank courts stay after listed courts, in their original order.
+  S.rows=S.rows.map((row,position)=>({row,position,rank:order.has(nz(row.court))?order.get(nz(row.court)):Number.POSITIVE_INFINITY}))
+    .sort((a,b)=>a.rank-b.rank||a.position-b.position)
+    .map(item=>item.row);
+  persist();render();toast("Sorted in Court list order");
+}
+["title","date","place"].forEach(id=>$(id).addEventListener("input",e=>{S[id]=e.target.value;$("pTitle").textContent=S.title;$("pSub").textContent=[fmtDate(S.date),S.place].filter(Boolean).join(" — ");persist()}));
+
+/* ---------- case memory ---------- */
+const nz=s=>String(s||"").trim().toLowerCase();
+function remember(i){
+  const r=S.rows[i];
+  if(!r||!(nz(r.no)||nz(r.p1)||nz(r.p2)))return;
+  let c=CASES.find(x=>x.id===r.cid);
+  if(!c)c=CASES.find(x=>nz(x.no)===nz(r.no)&&nz(x.p1)===nz(r.p1)&&nz(x.p2)===nz(r.p2)&&nz(x.court)===nz(r.court));
+  if(!c){c={id:uid()};CASES.push(c)}
+  Object.assign(c,{court:r.court,type:r.type,no:r.no.trim(),p1:r.p1.trim(),p2:r.p2.trim()});
+  r.cid=c.id;persist();saveCases();
+}
+let sg={i:0,items:[],sel:-1};
+function suggest(el,i,k){
+  const q=nz(el.value),box=$("sg");
+  if(q.length<(k==="no"?1:2)){hideSg();return}
+  const hit=c=>[c.no,c.p1,c.p2,c.p1+" vs "+c.p2].some(f=>nz(f).includes(q));
+  const items=CASES.filter(hit).sort((a,b)=>(nz(b[k]).startsWith(q)?1:0)-(nz(a[k]).startsWith(q)?1:0)).slice(0,8);
+  if(!items.length){hideSg();return}
+  sg={i,items,sel:-1};
+  box.innerHTML=items.map((c,n)=>`<div onmousedown="event.preventDefault();pick(${n})"><b>${esc(c.no)}</b> — ${esc(c.p1)} vs ${esc(c.p2)}<small>${esc([c.court,c.type].filter(Boolean).join(" · "))}</small></div>`).join("");
+  const rc=el.getBoundingClientRect();
+  box.style.left=Math.max(4,Math.min(rc.left,innerWidth-330))+"px";
+  box.style.top=rc.bottom+2+"px";
+  box.style.minWidth=Math.max(rc.width,320)+"px";
+  box.style.display="block";
+}
+function hideSg(){$("sg").style.display="none";sg.sel=-1}
+function pick(n){
+  const c=sg.items[n];if(!c)return;
+  historyCheckpoint();
+  const r=S.rows[sg.i];
+  Object.assign(r,{court:c.court,type:c.type,no:c.no,p1:c.p1,p2:c.p2,cid:c.id});
+  const ri=sg.i;persist();hideSg();render();toast("Case details filled");
+  const tr=$("rows").children[ri];if(tr){const sl=tr.querySelectorAll(".cbi");sl[sl.length-1].focus()}
+}
+function kd(e){
+  const box=$("sg"),open=box.style.display==="block";
+  if(e.key==="Enter"){
+    if(e.isComposing)return;
+    e.preventDefault();
+    if(open&&sg.sel>=0)pick(sg.sel);else nav(e.target);
+    return;
+  }
+  if(!open)return;
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    e.preventDefault();
+    sg.sel=(sg.sel+(e.key==="ArrowDown"?1:-1)+sg.items.length)%sg.items.length;
+    [...box.children].forEach((d,n)=>d.classList.toggle("on",n===sg.sel));
+  }else if(e.key==="Escape")hideSg();
+}
+function nav(el){
+  hideSg();
+  const tr=el.closest("tr");if(!tr)return;
+  remember(tr.rowIndex-1);
+  const f=[...document.querySelectorAll("#rows .cbi,#rows textarea")],n=f.indexOf(el);
+  if(n>=0&&n<f.length-1)f[n+1].focus();
+  else if(n===f.length-1)addRow();
+}
+function toggleMgr(){$("mgr").classList.toggle("show");renderMgr()}
+function renderMgr(){
+  if(!$("mgr").classList.contains("show"))return;
+  const q=nz($("mgrQ").value);
+  const l=CASES.filter(c=>!q||[c.no,c.p1,c.p2].some(f=>nz(f).includes(q)));
+  $("mgrList").innerHTML=l.length?l.map(c=>`<div><span><b>${esc(c.no)}</b> — ${esc(c.p1)} vs ${esc(c.p2)} <span class="note">(${esc([c.court,c.type].filter(Boolean).join(" · "))})</span></span><button class="del" onclick="delCase('${c.id}')">✕</button></div>`).join(""):'<div class="note">No saved cases.</div>';
+}
+function delCase(id){CASES=CASES.filter(c=>c.id!==id);saveCases();renderMgr()}
+
+/* ---------- dropdown lists ---------- */
+function renderLists(){
+  $("lists").innerHTML=Object.keys(NAMES).map(k=>`<div><label>${NAMES[k]} options (one per line)</label><textarea id="ls_${k}" onchange="saveList('${k}')">${esc(S.lists[k].join("\n"))}</textarea></div>`).join("")+
+   `<div><label>&nbsp;</label><button class="alt" onclick="resetLists()">Reset lists to default</button></div>`;
+}
+function saveList(k){
+  historyCheckpoint();
+  S.lists[k]=$("ls_"+k).value.split("\n").map(s=>s.trim()).filter(Boolean);
+  persist();const sc=window.scrollY;render();$("lists").classList.add("show");window.scrollTo(0,sc);toast(NAMES[k]+" list updated");
+}
+function resetLists(){historyCheckpoint();S.lists=JSON.parse(JSON.stringify(DEF));persist();render();$("lists").classList.add("show")}
+
+/* ---------- saved days ---------- */
+const days=()=>{try{return JSON.parse(localStorage.getItem(SK))||{}}catch(e){return {}}};
+function toggleDays(){$("dayPanel").classList.toggle("show");renderSaved()}
+function renderSaved(){
+  const d=days(),keys=Object.keys(d).sort().reverse();
+  $("dayList").innerHTML=keys.length?keys.map(k=>`<div class="dr"><span><b>${fmtDate(k)}</b>${d[k].place?" – "+esc(d[k].place):""} <span class="note">(${(d[k].rows||[]).length} cases)</span></span><span><button class="alt" onclick="openDay('${k}')">Open</button> <button class="del" onclick="delDay('${k}',this)">Delete</button></span></div>`).join(""):'<div class="dr note">No saved days yet. Use "Save this day".</div>';
+}
+function saveDay(){
+  if(!S.date){toast("Pick a date first");return}
+  S.rows.forEach((_,i)=>remember(i));
+  const d=days();d[S.date]={title:S.title,date:S.date,place:S.place,rows:JSON.parse(JSON.stringify(S.rows))};
+  localStorage.setItem(SK,JSON.stringify(d));renderSaved();scheduleDriveAutosave();toast("Saved for "+fmtDate(S.date));
+}
+function openDay(k){
+  const d=days()[k];if(!d)return;
+  historyCheckpoint();
+  S.title=d.title;S.date=d.date;S.place=d.place;S.rows=d.rows&&d.rows.length?d.rows:[blank()];persist();render();
+  window.scrollTo({top:0,behavior:"smooth"});toast("Opened "+fmtDate(k));
+}
+let delPending=null;
+function delDay(k,btn){
+  if(delPending!==k){
+    delPending=k;btn.textContent="Tap again to confirm";
+    setTimeout(()=>{if(delPending===k){delPending=null;if(btn.isConnected)btn.textContent="Delete"}},3000);
+    return;
+  }
+  delPending=null;
+  const d=days();delete d[k];
+  localStorage.setItem(SK,JSON.stringify(d));renderSaved();scheduleDriveAutosave();toast("Deleted "+fmtDate(k));
+}
+function newDay(){
+  if(!confirm("Start a new empty list? (Use 'Save this day' first to keep the current one.)"))return;
+  historyCheckpoint();
+  S.rows=[blank()];S.date=today();persist();render();
+}
+
+/* ---------- export ---------- */
+const party=r=>[r.p1,r.p2].filter(Boolean).join(" vs ");
+function copyText(){
+  let t=[S.title,[fmtDate(S.date),S.place].filter(Boolean).join(" — ")].filter(Boolean).join("\n")+"\n\n";
+  S.rows.forEach((r,i)=>{t+=`${i+1}. ${[r.court,r.type].filter(Boolean).join(" ")} ${r.no} | ${party(r)} | ${r.forr}${r.rem?" | "+r.rem:""}\n`});
+  const done=()=>toast("Copied");
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,fb);else fb();
+  function fb(){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();done()}
+}
+function dlCSV(){
+  const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  let c=[q(S.title)+","+q(fmtDate(S.date))+","+q(S.place),"",["Sl. No.","Court","Type","Case No.","Parties","For","Remarks"].map(q).join(",")];
+  S.rows.forEach((r,i)=>c.push([i+1,r.court,r.type,r.no,party(r),r.forr,r.rem].map(q).join(",")));
+  const b=new Blob(["\ufeff"+c.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="Cause_List_"+(S.date||"")+".csv";a.click();
+}
+/* ---------- backup / restore (portable across phones & people) ---------- */
+function backup(){
+  S.rows.forEach((_,i)=>remember(i));
+  const data={app:"causelist",v:1,exported:new Date().toISOString(),cases:CASES,days:days(),lists:S.lists};
+  const b=new Blob([JSON.stringify(data,null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);
+  a.download="Cause_List_Backup_"+today()+".json";a.click();
+  toast("Backup downloaded — keep it safe / share it");
+}
+function restore(inp){
+  const f=inp.files[0];inp.value="";if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    let d;try{d=JSON.parse(rd.result)}catch(e){toast("Not a valid backup file");return}
+    if(!d||d.app!=="causelist"){toast("Not a Cause List backup");return}
+    historyCheckpoint();
+    let nc=0,nd=0;
+    (d.cases||[]).forEach(c=>{
+      if(!c||!(c.no||c.p1||c.p2))return;
+      const dup=CASES.some(x=>nz(x.no)===nz(c.no)&&nz(x.p1)===nz(c.p1)&&nz(x.p2)===nz(c.p2)&&nz(x.court)===nz(c.court));
+      if(!dup){CASES.push({id:uid(),court:c.court||"",type:c.type||"",no:c.no||"",p1:c.p1||"",p2:c.p2||""});nc++}
+    });
+    saveCases();
+    const cur=days();
+    Object.keys(d.days||{}).forEach(k=>{if(!cur[k]){cur[k]=d.days[k];nd++}});
+    localStorage.setItem(SK,JSON.stringify(cur));
+    if(d.lists)Object.keys(NAMES).forEach(k=>{
+      (d.lists[k]||[]).forEach(o=>{if(!S.lists[k].includes(o))S.lists[k].push(o)});
+    });
+    persist();render();
+    toast(nc+" new case(s), "+nd+" new day(s) added");
+  };
+  rd.readAsText(f);
+}
+document.addEventListener("change",e=>{const t=e.target;if(t.tagName==="SELECT"&&t.nextElementSibling&&t.nextElementSibling.classList.contains("pv"))t.nextElementSibling.textContent=t.value});
+/* keep the suggestion list open while it is being scrolled/touched */
+let sgHold=false,sgT=0;
+function blurSg(){setTimeout(()=>{if(!sgHold)hideSg()},200)}
+const sgBox=$("sg");
+["touchstart","pointerdown","mousedown","wheel"].forEach(ev=>sgBox.addEventListener(ev,()=>{sgHold=true;clearTimeout(sgT);sgT=setTimeout(()=>sgHold=false,2500)},{passive:true}));
+["touchend","touchcancel"].forEach(ev=>sgBox.addEventListener(ev,()=>{clearTimeout(sgT);sgT=setTimeout(()=>sgHold=false,1500)},{passive:true}));
+window.addEventListener("scroll",e=>{if(e.target===sgBox||sgBox.contains(e.target)||sgHold)return;hideSg()},true);
+document.addEventListener("pointerdown",e=>{if(sgBox.style.display==="block"&&!sgBox.contains(e.target)&&!(e.target.closest&&e.target.closest(".grow")))hideSg()});
+
+/* ---------- Google Drive sync ---------- */
+/*
+  SETUP REQUIRED:
+  1. Create a Google Cloud project and enable the Google Drive API.
+  2. Configure the OAuth consent screen and create an OAuth Client ID
+     of type "Web application".
+  3. Add your GitHub Pages origin (for example,
+     https://YOUR-USERNAME.github.io) to "Authorized JavaScript origins".
+  4. Paste that OAuth Client ID below. This is a public browser app;
+     never put a client secret in this HTML file.
+*/
+const GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_OAUTH_CLIENT_ID_HERE";
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const DRIVE_FILE_NAME = "Cause_List_App_Data.json";
+let googleTokenClient = null;
+let googleAccessToken = "";
+let driveFileId = "";
+let googleTokenExpiresAt = 0;
+let driveSaveTimer = null;
+let driveBusy = false;
+
+function googleStatus(message){
+  const el=$("googleStatus");
+  if(el)el.textContent=message;
+}
+function googleButtons(connected){
+  $("googleSaveBtn").disabled=!connected;
+  $("googleLoadBtn").disabled=!connected;
+  $("googleSignInBtn").textContent=connected?"Reconnect Google":"Sign in with Google";
+}
+function googleConfigured(){
+  return GOOGLE_CLIENT_ID &&
+    !GOOGLE_CLIENT_ID.includes("PASTE_YOUR") &&
+    window.google && google.accounts && google.accounts.oauth2;
+}
+function initGoogleAuth(){
+  if(!googleConfigured()){
+    googleStatus("Add your Google OAuth Client ID in the HTML");
+    return false;
+  }
+  if(!googleTokenClient){
+    googleTokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:GOOGLE_CLIENT_ID,
+      scope:DRIVE_SCOPE,
+      include_granted_scopes:true,
+      callback:async (response)=>{
+        if(response.error){
+          googleStatus("Google sign-in failed: "+response.error);
+          return;
+        }
+        googleAccessToken=response.access_token;
+        googleTokenExpiresAt=Date.now()+(Number(response.expires_in||3600)*1000);
+        googleButtons(true);
+        googleStatus("Google connected — checking Drive…");
+        try{
+          await findDriveFile();
+          googleStatus(driveFileId?"Connected to Google Drive":"Connected — ready to create your data file");
+        }catch(err){
+          googleStatus("Drive check failed: "+err.message);
+        }
+      }
+    });
+  }
+  return true;
+}
+function googleSignIn(){
+  if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR")){
+    toast("First add your Google OAuth Client ID in the HTML");
+    googleStatus("Google OAuth Client ID is not configured");
+    return;
+  }
+  const start=()=>{
+    if(!initGoogleAuth())return;
+    googleTokenClient.requestAccessToken({prompt:googleAccessToken?"":"consent"});
+  };
+  if(window.google&&google.accounts&&google.accounts.oauth2)start();
+  else{
+    googleStatus("Loading Google sign-in…");
+    let tries=0;
+    const wait=setInterval(()=>{
+      tries++;
+      if(window.google&&google.accounts&&google.accounts.oauth2){clearInterval(wait);start();}
+      else if(tries>30){clearInterval(wait);googleStatus("Google sign-in library did not load. Check your internet connection.");}
+    },200);
+  }
+}
+function validGoogleToken(){
+  return !!googleAccessToken && Date.now()<googleTokenExpiresAt-60000;
+}
+async function driveRequest(url,options={}){
+  if(!validGoogleToken())throw new Error("Google session expired. Please reconnect.");
+  const response=await fetch(url,{
+    ...options,
+    headers:{
+      ...(options.headers||{}),
+      Authorization:"Bearer "+googleAccessToken
+    }
+  });
+  if(!response.ok){
+    let detail="";
+    try{detail=(await response.json()).error?.message||"";}catch(e){}
+    throw new Error(detail||("Google Drive returned HTTP "+response.status));
+  }
+  if(response.status===204)return null;
+  return response.json();
+}
+async function findDriveFile(){
+  const q=encodeURIComponent("name='"+DRIVE_FILE_NAME+"' and trashed=false");
+  const result=await driveRequest(
+    "https://www.googleapis.com/drive/v3/files?q="+q+"&fields=files(id,name,modifiedTime)&spaces=drive"
+  );
+  driveFileId=result.files&&result.files.length?result.files[0].id:"";
+  return driveFileId;
+}
+function makeDriveBackup(){
+  S.rows.forEach((_,i)=>remember(i));
+  return {
+    app:"causelist",
+    v:1,
+    exported:new Date().toISOString(),
+    current:{title:S.title,date:S.date,place:S.place,rows:S.rows,lists:S.lists},
+    cases:CASES,
+    days:days(),
+    lists:S.lists
+  };
+}
+async function saveToGoogleDrive(){
+  if(driveBusy)return;
+  if(!validGoogleToken()){googleSignIn();return;}
+  driveBusy=true;googleStatus("Saving to Google Drive…");
+  try{
+    const data=JSON.stringify(makeDriveBackup(),null,2);
+    const metadata={name:DRIVE_FILE_NAME,mimeType:"application/json"};
+    if(!driveFileId)await findDriveFile();
+    let result;
+    if(driveFileId){
+      const boundary="-------causelist_boundary_"+Date.now();
+      const body="--"+boundary+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+
+        JSON.stringify(metadata)+"\r\n--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+
+        data+"\r\n--"+boundary+"--";
+      result=await driveRequest(
+        "https://www.googleapis.com/upload/drive/v3/files/"+encodeURIComponent(driveFileId)+"?uploadType=multipart",
+        {method:"PATCH",headers:{"Content-Type":"multipart/related; boundary="+boundary},body}
+      );
+    }else{
+      const boundary="-------causelist_boundary_"+Date.now();
+      const body="--"+boundary+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+
+        JSON.stringify(metadata)+"\r\n--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+
+        data+"\r\n--"+boundary+"--";
+      result=await driveRequest(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+        {method:"POST",headers:{"Content-Type":"multipart/related; boundary="+boundary},body}
+      );
+      driveFileId=result.id;
+    }
+    googleStatus("Saved to Google Drive at "+new Date().toLocaleTimeString());
+    toast("Saved to Google Drive");
+  }catch(err){
+    googleStatus("Drive save failed: "+err.message);
+    toast("Google Drive save failed");
+  }finally{driveBusy=false;}
+}
+async function loadFromGoogleDrive(){
+  if(driveBusy)return;
+  if(!validGoogleToken()){googleSignIn();return;}
+  driveBusy=true;googleStatus("Loading from Google Drive…");
+  try{
+    if(!driveFileId)await findDriveFile();
+    if(!driveFileId){googleStatus("No saved Cause List file found in Drive");toast("No Drive backup found");return;}
+    const data=await driveRequest("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(driveFileId)+"?alt=media");
+    if(!data||data.app!=="causelist")throw new Error("The Drive file is not a valid Cause List backup");
+    if(!confirm("Load the data saved in Google Drive? This replaces the current list, saved days and saved cases in this browser."))return;
+    historyCheckpoint();
+    if(data.current){
+      S={
+        title:data.current.title||"Cause List",
+        date:data.current.date||today(),
+        place:data.current.place||"",
+        rows:Array.isArray(data.current.rows)&&data.current.rows.length?data.current.rows:[blank()],
+        lists:Object.assign({},DEF,data.current.lists||data.lists||{})
+      };
+      try{localStorage.setItem(K,JSON.stringify(S));}catch(e){}
+    }else if(data.days){
+      // Compatibility with backups made by the app's original Backup button.
+      S.lists=Object.assign({},DEF,data.lists||S.lists||{});
+    }
+    CASES=Array.isArray(data.cases)?data.cases:[];
+    saveCases();
+    if(data.days&&typeof data.days==="object")localStorage.setItem(SK,JSON.stringify(data.days));
+    historyInit();render();
+    googleStatus("Loaded from Google Drive");
+    toast("Loaded from Google Drive");
+  }catch(err){
+    googleStatus("Drive load failed: "+err.message);
+    toast("Google Drive load failed");
+  }finally{driveBusy=false;}
+}
+function scheduleDriveAutosave(){
+  if(!validGoogleToken())return;
+  clearTimeout(driveSaveTimer);
+  driveSaveTimer=setTimeout(()=>saveToGoogleDrive(),1800);
+}
+
+load();historyInit();render();
+</script>
+</body>
+</html>
