@@ -766,7 +766,7 @@ function googleSignOut(){
 }
 function googleConfigured(){
   return GOOGLE_CLIENT_ID &&
-    !GOOGLE_CLIENT_ID.includes("940827541665-037gbbudqh7g0ffo0fvqcdmk9847g0m1.apps.googleusercontent.com") &&
+    !GOOGLE_CLIENT_ID.includes("PASTE_YOUR") &&
     window.google && google.accounts && google.accounts.oauth2;
 }
 function initGoogleAuth(){
@@ -809,7 +809,7 @@ function initGoogleAuth(){
   return true;
 }
 function googleSignIn(){
-  if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("940827541665-037gbbudqh7g0ffo0fvqcdmk9847g0m1.apps.googleusercontent.com")){
+  if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR")){
     toast("First add your Google OAuth Client ID in the HTML");
     googleStatus("Google OAuth Client ID is not configured");
     return;
