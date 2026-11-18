@@ -733,10 +733,10 @@ function renderAccount(){
   const u=googleUser||null;
   $("accountName").textContent=u?(u.name||"Google account"):(googleAccessToken?"Google account":"Not signed in");
   $("accountEmail").textContent=u?(u.email||"Email not provided"):(googleAccessToken?"Account details unavailable":"Sign in with Google to view account details");
-  $("accountStatus").textContent=validGoogleToken()?"Connected to Google Drive":"Not connected";
+  $("accountStatus").textContent=validGoogleToken()?"Connected to Google Drive":(googleIsRemembered()?"Signed in — tap anywhere to resume sync":"Not connected");
   const avatar=$("accountAvatar");
   if(u&&u.picture){avatar.src=u.picture;avatar.style.display="block";}else{avatar.removeAttribute("src");avatar.style.display="none";}
-  $("googleLogoutBtn").disabled=!googleAccessToken;
+  $("googleLogoutBtn").disabled=!(googleAccessToken||googleIsRemembered());
 }
 
 /* ---------- Google Drive sync ---------- */
@@ -778,14 +778,28 @@ function googleButtons(connected){
   $("googleSignInBtn").textContent=connected?"Reconnect Google":"Sign in with Google";
   renderAccount();
 }
+const GOOGLE_SESSION_KEY="causelist_google_session_v2";
+let googleResumeArmed=false;
+function saveGoogleSession(){
+  try{localStorage.setItem(GOOGLE_SESSION_KEY,JSON.stringify({t:googleAccessToken,e:googleTokenExpiresAt,u:googleUser}));}catch(e){}
+}
+function loadGoogleSession(){
+  try{
+    const x=JSON.parse(localStorage.getItem(GOOGLE_SESSION_KEY)||"null");
+    if(x){googleAccessToken=x.t||"";googleTokenExpiresAt=Number(x.e)||0;googleUser=x.u||null;}
+  }catch(e){}
+}
+function googleIsRemembered(){return !!localStorage.getItem(GOOGLE_LOGIN_PREF_KEY);}
 function googleSignOut(){
+  // The ONLY place a login is ever cleared: the user pressing Log out.
   const token=googleAccessToken;
   if(token&&window.google&&google.accounts&&google.accounts.oauth2){
     try{google.accounts.oauth2.revoke(token,()=>{});}catch(e){}
   }
   googleAccessToken="";googleTokenExpiresAt=0;googleUser=null;driveFileId="";driveModifiedTime="";
   localStorage.removeItem(GOOGLE_LOGIN_PREF_KEY);
-  clearTimeout(googleRefreshTimer);googleRefreshTimer=null;googleSilentAuthInFlight=false;
+  localStorage.removeItem(GOOGLE_SESSION_KEY);
+  clearTimeout(googleRefreshTimer);googleRefreshTimer=null;googleSilentAuthInFlight=false;googleResumeArmed=false;
   clearTimeout(driveSaveTimer);clearInterval(drivePollTimer);drivePollTimer=null;
   googleButtons(false);
   googleStatus("Signed out — local autosave remains active");
@@ -797,6 +811,26 @@ function googleConfigured(){
     !GOOGLE_CLIENT_ID.includes("PASTE_YOUR") &&
     window.google && google.accounts && google.accounts.oauth2;
 }
+async function googleAfterToken(){
+  googleSilentAuthInFlight=false;googleResumeArmed=false;
+  localStorage.setItem(GOOGLE_LOGIN_PREF_KEY,"1");
+  saveGoogleSession();
+  scheduleGoogleTokenRefresh();
+  googleButtons(true);
+  googleStatus("Google connected — checking Drive…");
+  try{
+    const p=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+googleAccessToken}});
+    if(p.ok){googleUser=await p.json();saveGoogleSession();}
+    renderAccount();
+    await findDriveFile();
+    if(driveFileId) await syncFromDrive(true);
+    else scheduleDriveAutosave();
+    startDrivePolling();
+    googleStatus("Google Drive connected — background sync is on");
+  }catch(err){
+    googleStatus("Drive check failed: "+err.message);
+  }
+}
 function initGoogleAuth(){
   if(!googleConfigured()){
     googleStatus("Add your Google OAuth Client ID in the HTML");
@@ -807,34 +841,33 @@ function initGoogleAuth(){
       client_id:GOOGLE_CLIENT_ID,
       scope:DRIVE_SCOPE,
       include_granted_scopes:true,
-      callback:async (response)=>{
+      callback:(response)=>{
         if(response.error){
-          googleStatus("Google sign-in failed: "+response.error);
+          // Never log the user out because a refresh failed — just wait for the next tap.
+          googleSilentAuthInFlight=false;
+          if(response.error==="access_denied")googleStatus("Google access was declined — tap Reconnect Google to try again");
+          else armGoogleResume();
           return;
         }
         googleAccessToken=response.access_token;
         googleTokenExpiresAt=Date.now()+(Number(response.expires_in||3600)*1000);
-        localStorage.setItem(GOOGLE_LOGIN_PREF_KEY,"1");
-        googleSilentAuthInFlight=false;
-        scheduleGoogleTokenRefresh();
-        googleButtons(true);
-        googleStatus("Google connected — checking Drive…");
-        try{
-          const profileResponse=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+googleAccessToken}});
-          if(profileResponse.ok)googleUser=await profileResponse.json();
-          renderAccount();
-          await findDriveFile();
-          if(driveFileId) await syncFromDrive(true);
-          else scheduleDriveAutosave();
-          startDrivePolling();
-          googleStatus("Google Drive connected — background sync is on");
-        }catch(err){
-          googleStatus("Drive check failed: "+err.message);
-        }
-      }
+        googleAfterToken();
+      },
+      error_callback:()=>{googleSilentAuthInFlight=false;armGoogleResume();}
     });
   }
   return true;
+}
+function requestGoogleToken(){
+  if(googleSilentAuthInFlight)return;
+  if(!initGoogleAuth())return;
+  googleSilentAuthInFlight=true;
+  // Same-account re-authorization: no consent screen, popup closes by itself.
+  const opts={prompt:""};
+  if(googleUser&&googleUser.email)opts.hint=googleUser.email;
+  try{googleTokenClient.requestAccessToken(opts);}
+  catch(e){googleSilentAuthInFlight=false;armGoogleResume();return;}
+  setTimeout(()=>{googleSilentAuthInFlight=false;},15000);
 }
 function googleSignIn(){
   if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR")){
@@ -844,9 +877,11 @@ function googleSignIn(){
   }
   const start=()=>{
     if(!initGoogleAuth())return;
-    // A user-initiated sign-in establishes the remembered-login preference.
-    localStorage.setItem(GOOGLE_LOGIN_PREF_KEY,"1");
-    googleTokenClient.requestAccessToken({prompt:googleAccessToken?"":"consent"});
+    googleSilentAuthInFlight=true;
+    const opts={prompt:googleUser?"":"consent"};
+    if(googleUser&&googleUser.email)opts.hint=googleUser.email;
+    googleTokenClient.requestAccessToken(opts);
+    setTimeout(()=>{googleSilentAuthInFlight=false;},15000);
   };
   if(window.google&&google.accounts&&google.accounts.oauth2)start();
   else{
@@ -864,49 +899,66 @@ function validGoogleToken(){
 }
 
 /*
-  Google Identity Services browser access tokens are short-lived (normally about
-  one hour). A static GitHub Pages app cannot store a permanent refresh token.
-  We therefore try a quiet re-authorization shortly before expiry and when the
-  tab becomes active. Google may still require the user to sign in again if its
-  browser session, consent, popup policy, or account security state requires it.
+  Google's browser (token) login gives a 1-hour access token and no permanent
+  refresh token. So the app stays "signed in" (identity + login flag saved on
+  the device, only cleared by Log out) and renews the 1-hour token with a
+  one-tap silent re-authorization. Browsers only allow Google's renewal popup
+  after a user gesture, so we arm a one-time listener: your next tap/keypress
+  anywhere in the app renews the token instantly with no login screen.
 */
+function armGoogleResume(){
+  if(!googleIsRemembered()||validGoogleToken()||googleResumeArmed)return;
+  googleResumeArmed=true;
+  googleStatus((googleUser&&googleUser.email?"Signed in as "+googleUser.email+" — ":"")+"tap anywhere to resume Drive sync");
+  renderAccount();
+  const go=()=>{
+    ["pointerdown","pointerup","keydown"].forEach(ev=>document.removeEventListener(ev,go,true));
+    googleResumeArmed=false;
+    if(!validGoogleToken())requestGoogleToken();
+  };
+  ["pointerdown","pointerup","keydown"].forEach(ev=>document.addEventListener(ev,go,true));
+}
 function scheduleGoogleTokenRefresh(){
   clearTimeout(googleRefreshTimer);
   if(!googleTokenExpiresAt)return;
-  const delay=Math.max(15000,googleTokenExpiresAt-Date.now()-5*60*1000);
-  googleRefreshTimer=setTimeout(()=>trySilentGoogleReconnect(),delay);
+  // Arm the one-tap renewal a few minutes before the token runs out.
+  const delay=Math.max(1000,googleTokenExpiresAt-Date.now()-4*60*1000);
+  googleRefreshTimer=setTimeout(()=>{
+    if(!googleIsRemembered())return;
+    if(!validGoogleToken()||Date.now()>googleTokenExpiresAt-4*60*1000-1000)armGoogleResumeEarly();
+  },delay);
 }
-function trySilentGoogleReconnect(){
-  if(!localStorage.getItem(GOOGLE_LOGIN_PREF_KEY) || googleSilentAuthInFlight)return;
-  if(!googleConfigured() || !initGoogleAuth())return;
-  if(validGoogleToken() && Date.now()<googleTokenExpiresAt-5*60*1000){
-    scheduleGoogleTokenRefresh();
-    return;
-  }
-  googleSilentAuthInFlight=true;
-  googleStatus("Refreshing Google connection…");
-  try{
-    // Empty prompt requests a token without forcing the consent screen again.
-    googleTokenClient.requestAccessToken({prompt:""});
-    setTimeout(()=>{
-      if(googleSilentAuthInFlight){
-        googleSilentAuthInFlight=false;
-        if(!validGoogleToken())googleStatus("Google needs you to reconnect — your local data is safe");
-      }
-    },12000);
-  }catch(err){
-    googleSilentAuthInFlight=false;
-    googleStatus("Google needs you to reconnect — your local data is safe");
-  }
+function armGoogleResumeEarly(){
+  // Token still valid for a few minutes: renew on next gesture without showing "expired".
+  if(googleResumeArmed||!googleIsRemembered())return;
+  googleResumeArmed=true;
+  const go=()=>{
+    ["pointerdown","pointerup","keydown"].forEach(ev=>document.removeEventListener(ev,go,true));
+    googleResumeArmed=false;
+    requestGoogleToken();
+  };
+  ["pointerdown","pointerup","keydown"].forEach(ev=>document.addEventListener(ev,go,true));
 }
-window.addEventListener("focus",()=>{
-  if(localStorage.getItem(GOOGLE_LOGIN_PREF_KEY) && !validGoogleToken())trySilentGoogleReconnect();
-});
-document.addEventListener("visibilitychange",()=>{
-  if(!document.hidden && localStorage.getItem(GOOGLE_LOGIN_PREF_KEY) && !validGoogleToken())trySilentGoogleReconnect();
+function resumeGoogleIfNeeded(){
+  if(!googleIsRemembered())return;
+  if(!googleUser&&!googleAccessToken)loadGoogleSession();
+  if(!validGoogleToken())armGoogleResume();
+}
+window.addEventListener("focus",resumeGoogleIfNeeded);
+window.addEventListener("online",resumeGoogleIfNeeded);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)resumeGoogleIfNeeded();});
+// Keep several open tabs in step (login / logout in one tab applies to the others).
+window.addEventListener("storage",e=>{
+  if(e.key!==GOOGLE_SESSION_KEY)return;
+  if(e.newValue===null){
+    googleAccessToken="";googleTokenExpiresAt=0;googleUser=null;driveFileId="";
+    clearInterval(drivePollTimer);drivePollTimer=null;googleButtons(false);googleStatus("Signed out");return;
+  }
+  loadGoogleSession();
+  if(validGoogleToken()){googleButtons(true);startDrivePolling();googleStatus("Google Drive connected — background sync is on");}
 });
 async function driveRequest(url,options={}){
-  if(!validGoogleToken())throw new Error("Google session expired. Please reconnect.");
+  if(!validGoogleToken()){armGoogleResume();throw new Error("Google token expired — tap anywhere to renew");}
   const response=await fetch(url,{
     ...options,
     headers:{
@@ -914,6 +966,7 @@ async function driveRequest(url,options={}){
       Authorization:"Bearer "+googleAccessToken
     }
   });
+  if(response.status===401){googleTokenExpiresAt=0;armGoogleResume();}
   if(!response.ok){
     let detail="";
     try{detail=(await response.json()).error?.message||"";}catch(e){}
@@ -1024,7 +1077,7 @@ function startDrivePolling(){
 }
 async function saveToGoogleDrive(){
   if(driveBusy){scheduleDriveAutosave();return;}
-  if(!validGoogleToken()){googleSignIn();return;}
+  if(!validGoogleToken()){armGoogleResume();return;}
   driveBusy=true;googleStatus("Saving to Google Drive…");
   try{
     const data=JSON.stringify(makeDriveBackup(),null,2);
@@ -1068,7 +1121,7 @@ async function loadFromGoogleDrive(){
 
 function scheduleDriveAutosave(){
   if(!validGoogleToken()){
-    if(googleAccessToken)googleStatus("Google session expired — sign in again; changes remain saved on this device");
+    if(googleIsRemembered())armGoogleResume(); // changes stay saved locally and upload after the next tap
     return;
   }
   clearTimeout(driveSaveTimer);
@@ -1130,14 +1183,17 @@ window.addEventListener("afterprint",()=>{
 load();historyInit();render();renderAccount();
 try{setPrintOrientation(localStorage.getItem(PRINT_ORIENTATION_KEY)||"portrait")}catch(e){setPrintOrientation("portrait")}
 restoreCauseTypography();
-// Restore the signed-in experience after reload where Google's browser session
-// permits a quiet token refresh. No access token is stored in localStorage.
-if(localStorage.getItem(GOOGLE_LOGIN_PREF_KEY)){
+// Restore the saved Google login on every load (stays until you press Log out).
+if(googleIsRemembered()){
+  loadGoogleSession();
+  googleButtons(validGoogleToken());
+  renderAccount();
   const bootAuth=()=>{
-    if(googleConfigured())trySilentGoogleReconnect();
-    else setTimeout(bootAuth,500);
+    if(!googleConfigured()){setTimeout(bootAuth,400);return;}
+    if(validGoogleToken()){initGoogleAuth();googleAfterToken();}
+    else armGoogleResume();
   };
-  setTimeout(bootAuth,900);
+  setTimeout(bootAuth,300);
 }
 </script>
 </body>
