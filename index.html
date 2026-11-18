@@ -31,14 +31,17 @@ button:disabled:hover{background:rgba(255,255,255,.54);border-color:rgba(185,205
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border:1px solid rgba(255,255,255,.62);border-radius:10px;background:rgba(255,255,255,.27);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
 .sp{flex:1}
 .tw{overflow-x:auto;border:1px solid rgba(255,255,255,.78);border-radius:10px;background:rgba(255,255,255,.24);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-table{border-collapse:collapse;width:100%;min-width:900px}\n#causeTable{table-layout:fixed;font-family:var(--cause-font-family);font-size:var(--cause-font-size)}\n#causeTable th,#causeTable td{font-family:var(--cause-font-family);font-size:var(--cause-font-size);white-space:normal;overflow-wrap:anywhere;word-break:normal}
+table{border-collapse:collapse;width:100%;min-width:900px}
+#causeTable{table-layout:fixed;font-family:var(--cause-font-family);font-size:var(--cause-font-size)}
+#causeTable th,#causeTable td{font-family:var(--cause-font-family);font-size:var(--cause-font-size);white-space:normal;overflow-wrap:anywhere;word-break:normal}
 th{background:rgba(231,240,250,.88);color:var(--acc);text-align:center;font-size:14px;font-weight:700;letter-spacing:.2px;padding:8px 7px;border:1px solid var(--line);border-bottom:2px solid var(--teal)}
 td{border:1px solid var(--line);padding:3px;vertical-align:middle;text-align:center}
 td.sl{width:44px;font-weight:700;color:var(--teal);background:rgba(230,246,245,.8)}
 tbody tr:nth-child(even) td:not(.sl){background:rgba(240,247,252,.55)}
 tbody tr:hover td:not(.sl){background:rgba(224,240,250,.82)}
 td.pt{min-width:300px}
-td.pt .pp{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:4px;align-items:start}\ntd.pt .pp>.grow{min-width:0;width:100%}
+td.pt .pp{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:4px;align-items:start}
+td.pt .pp>.grow{min-width:0;width:100%}
 td.pt .pp span{color:var(--teal);font-family:var(--cause-font-family);font-size:var(--cause-font-size);font-style:italic;font-weight:700;align-self:start}
 td.ac{width:92px;white-space:nowrap}
 td.no{min-width:76px;width:80px;max-width:88px}
@@ -99,8 +102,15 @@ td select:hover{border-color:var(--line)}
 @media (max-width:700px){.wrap{padding:9px}.card{padding:10px}.bar{gap:6px}.bar button{flex:1 1 auto}}
 #printHead{display:none}
 @media (max-width:700px){.head{grid-template-columns:1fr}}
-.pv{display:none}\n#causeTable td .pv{display:block;min-height:1.2em;white-space:normal;overflow-wrap:anywhere;word-break:normal;font-family:var(--cause-font-family);font-size:var(--cause-font-size);line-height:1.25;cursor:text}\n#causeTable td .cbi{display:none}\n#causeTable td:focus-within .cbi{display:block}\n#causeTable td:focus-within .pv{display:block}
-#causeTable td .cbi:focus+.pv{display:none}\n#causeTable td .pv:focus-visible{outline:2px solid var(--teal);outline-offset:1px;border-radius:3px}\n.font-bar{align-items:center}\n.font-bar select{font-family:inherit}
+.pv{display:none}
+#causeTable td .pv{display:block;min-height:1.2em;white-space:normal;overflow-wrap:anywhere;word-break:normal;font-family:var(--cause-font-family);font-size:var(--cause-font-size);line-height:1.25;cursor:text}
+#causeTable td .cbi{display:none}
+#causeTable td:focus-within .cbi{display:block}
+#causeTable td:focus-within .pv{display:block}
+#causeTable td .cbi:focus+.pv{display:none}
+#causeTable td .pv:focus-visible{outline:2px solid var(--teal);outline-offset:1px;border-radius:3px}
+.font-bar{align-items:center}
+.font-bar select{font-family:inherit}
 @page{size:A4 portrait;margin:9mm 8mm}
 @page landscapeCauseList{size:A4 landscape;margin:7mm 7mm}
 @media print{
@@ -143,7 +153,8 @@ td select:hover{border-color:var(--line)}
   ::placeholder{color:transparent!important}
 }
 </style>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>\n</head>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
 <body>
 <div class="wrap">
 <div class="menu-top noprint"><button class="alt" onclick="openSideMenu()" aria-label="Open side menu">☰ Menu</button></div>
@@ -760,7 +771,7 @@ const GOOGLE_CLIENT_ID = "940827541665-037gbbudqh7g0ffo0fvqcdmk9847g0m1.apps.goo
 /* PERMANENT LOGIN: paste your Apps Script "Web app" URL here (see setup steps).
    With it, this device keeps a refresh token and renews Google access silently,
    with no popup, until you press Log out. */
-const AUTH_PROXY_URL = "https://script.google.com/macros/s/AKfycbxy-3L250F4uGJkoTcALYuFccnhw9GDMMvLc_PsOeK3KAgpbGVPKvOLqQo5OJluqU_H/exec";
+const AUTH_PROXY_URL = "https://script.google.com/macros/s/AKfycbysPAQRYlhXAGjztuc04Pq3m_T1ZWKR-tOZGG5-9Fmb_jUdvmnI8ZW5NFUCZ1dO51ou/exec";
 const DRIVE_SCOPE = "openid email profile https://www.googleapis.com/auth/drive.file";
 const DRIVE_FILE_NAME = "Cause_List_App_Data_Fresh.json";
 let googleTokenClient = null;
@@ -770,6 +781,7 @@ let driveFileId = "";
 let googleTokenExpiresAt = 0;
 let googleRefreshToken = "";
 let googleCodeClient = null;
+let googleProxyBroken = false;
 let googleEnsurePromise = null;
 let googleRefreshTimer = null;
 let googleSilentAuthInFlight = false;
@@ -934,7 +946,11 @@ function codeSignIn(){
           if(t.refresh_token)googleRefreshToken=t.refresh_token;
           else if(!googleRefreshToken)toast("Google gave no long-term token. Remove this app at myaccount.google.com/permissions, then sign in again.");
           await googleAfterToken();
-        }catch(err){googleStatus("Sign-in failed: "+err.message);}
+        }catch(err){
+          // Helper unreachable: fall back to normal (hourly) sign-in so login still works.
+          googleProxyBroken=true;
+          googleStatus("Login helper not reachable ("+err.message+"). Tap Sign in with Google again to use normal sign-in; see setup step 3.");
+        }
       },
       error_callback:()=>googleStatus("Sign-in window was closed")
     });
@@ -948,7 +964,7 @@ function googleSignIn(){
     return;
   }
   const start=()=>{
-    if(AUTH_PROXY_URL&&window.google&&google.accounts&&google.accounts.oauth2){codeSignIn();return;}
+    if(AUTH_PROXY_URL&&!googleProxyBroken&&window.google&&google.accounts&&google.accounts.oauth2){codeSignIn();return;}
     if(!initGoogleAuth())return;
     googleSilentAuthInFlight=true;
     const opts={prompt:googleUser?"":"consent"};
