@@ -751,6 +751,10 @@ function renderAccount(){
      never put a client secret in this HTML file.
 */
 const GOOGLE_CLIENT_ID = "940827541665-037gbbudqh7g0ffo0fvqcdmk9847g0m1.apps.googleusercontent.com";
+/* PERMANENT LOGIN: paste your Apps Script "Web app" URL here (see setup steps).
+   With it, this device keeps a refresh token and renews Google access silently,
+   with no popup, until you press Log out. */
+const AUTH_PROXY_URL = "https://script.google.com/macros/s/AKfycbxy-3L250F4uGJkoTcALYuFccnhw9GDMMvLc_PsOeK3KAgpbGVPKvOLqQo5OJluqU_H/exec";
 const DRIVE_SCOPE = "openid email profile https://www.googleapis.com/auth/drive.file";
 const DRIVE_FILE_NAME = "Cause_List_App_Data_Fresh.json";
 let googleTokenClient = null;
@@ -758,6 +762,9 @@ let googleAccessToken = "";
 let googleUser = null;
 let driveFileId = "";
 let googleTokenExpiresAt = 0;
+let googleRefreshToken = "";
+let googleCodeClient = null;
+let googleEnsurePromise = null;
 let googleRefreshTimer = null;
 let googleSilentAuthInFlight = false;
 const GOOGLE_LOGIN_PREF_KEY = "causelist_google_login_preferred_v1";
@@ -781,12 +788,12 @@ function googleButtons(connected){
 const GOOGLE_SESSION_KEY="causelist_google_session_v2";
 let googleResumeArmed=false;
 function saveGoogleSession(){
-  try{localStorage.setItem(GOOGLE_SESSION_KEY,JSON.stringify({t:googleAccessToken,e:googleTokenExpiresAt,u:googleUser}));}catch(e){}
+  try{localStorage.setItem(GOOGLE_SESSION_KEY,JSON.stringify({t:googleAccessToken,e:googleTokenExpiresAt,u:googleUser,r:googleRefreshToken}));}catch(e){}
 }
 function loadGoogleSession(){
   try{
     const x=JSON.parse(localStorage.getItem(GOOGLE_SESSION_KEY)||"null");
-    if(x){googleAccessToken=x.t||"";googleTokenExpiresAt=Number(x.e)||0;googleUser=x.u||null;}
+    if(x){googleAccessToken=x.t||"";googleTokenExpiresAt=Number(x.e)||0;googleUser=x.u||null;googleRefreshToken=x.r||"";}
   }catch(e){}
 }
 function googleIsRemembered(){return !!localStorage.getItem(GOOGLE_LOGIN_PREF_KEY);}
@@ -796,6 +803,8 @@ function googleSignOut(){
   if(token&&window.google&&google.accounts&&google.accounts.oauth2){
     try{google.accounts.oauth2.revoke(token,()=>{});}catch(e){}
   }
+  try{if(googleRefreshToken&&window.google&&google.accounts)google.accounts.oauth2.revoke(googleRefreshToken,()=>{});}catch(e){}
+  googleRefreshToken="";
   googleAccessToken="";googleTokenExpiresAt=0;googleUser=null;driveFileId="";driveModifiedTime="";
   localStorage.removeItem(GOOGLE_LOGIN_PREF_KEY);
   localStorage.removeItem(GOOGLE_SESSION_KEY);
@@ -869,6 +878,63 @@ function requestGoogleToken(){
   catch(e){googleSilentAuthInFlight=false;armGoogleResume();return;}
   setTimeout(()=>{googleSilentAuthInFlight=false;},15000);
 }
+async function proxyCall(body){
+  const r=await fetch(AUTH_PROXY_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
+  return r.json();
+}
+// Silent renewal using the saved refresh token. No popup, no tap needed.
+function ensureGoogleToken(){
+  if(validGoogleToken())return Promise.resolve(true);
+  if(!AUTH_PROXY_URL||!googleRefreshToken)return Promise.resolve(false);
+  if(googleEnsurePromise)return googleEnsurePromise;
+  googleEnsurePromise=(async()=>{
+    for(let i=0;i<3;i++){
+      try{
+        const t=await proxyCall({action:"refresh",refresh_token:googleRefreshToken});
+        if(t.access_token){
+          googleAccessToken=t.access_token;
+          googleTokenExpiresAt=Date.now()+(Number(t.expires_in||3600)*1000);
+          saveGoogleSession();scheduleGoogleTokenRefresh();
+          return true;
+        }
+        if(t.error==="invalid_grant"){googleRefreshToken="";saveGoogleSession();return false;} // revoked/expired: need one new login
+      }catch(e){} // network problem: keep the login, retry
+      await new Promise(r=>setTimeout(r,1500*(i+1)));
+    }
+    return false;
+  })().finally(()=>{googleEnsurePromise=null;});
+  return googleEnsurePromise;
+}
+async function resumeViaRefresh(){
+  if(await ensureGoogleToken()){
+    googleButtons(true);
+    if(!drivePollTimer||!driveFileId){await googleAfterToken();}
+    return true;
+  }
+  return false;
+}
+function codeSignIn(){
+  if(!googleCodeClient){
+    googleCodeClient=google.accounts.oauth2.initCodeClient({
+      client_id:GOOGLE_CLIENT_ID,scope:DRIVE_SCOPE,ux_mode:"popup",
+      callback:async(resp)=>{
+        if(resp.error||!resp.code){googleStatus("Google sign-in failed: "+(resp.error||"no code"));return;}
+        googleStatus("Finishing sign-in…");
+        try{
+          const t=await proxyCall({action:"exchange",code:resp.code});
+          if(!t.access_token)throw new Error(t.error_description||t.error||"token exchange failed");
+          googleAccessToken=t.access_token;
+          googleTokenExpiresAt=Date.now()+(Number(t.expires_in||3600)*1000);
+          if(t.refresh_token)googleRefreshToken=t.refresh_token;
+          else if(!googleRefreshToken)toast("Google gave no long-term token. Remove this app at myaccount.google.com/permissions, then sign in again.");
+          await googleAfterToken();
+        }catch(err){googleStatus("Sign-in failed: "+err.message);}
+      },
+      error_callback:()=>googleStatus("Sign-in window was closed")
+    });
+  }
+  googleCodeClient.requestCode();
+}
 function googleSignIn(){
   if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR")){
     toast("First add your Google OAuth Client ID in the HTML");
@@ -876,6 +942,7 @@ function googleSignIn(){
     return;
   }
   const start=()=>{
+    if(AUTH_PROXY_URL&&window.google&&google.accounts&&google.accounts.oauth2){codeSignIn();return;}
     if(!initGoogleAuth())return;
     googleSilentAuthInFlight=true;
     const opts={prompt:googleUser?"":"consent"};
@@ -923,6 +990,13 @@ function scheduleGoogleTokenRefresh(){
   if(!googleTokenExpiresAt)return;
   // Arm the one-tap renewal a few minutes before the token runs out.
   const delay=Math.max(1000,googleTokenExpiresAt-Date.now()-4*60*1000);
+  if(AUTH_PROXY_URL&&googleRefreshToken){
+    googleRefreshTimer=setTimeout(async()=>{
+      googleTokenExpiresAt=Math.min(googleTokenExpiresAt,Date.now()); // force renewal
+      if(!await ensureGoogleToken())armGoogleResume();
+    },delay);
+    return;
+  }
   googleRefreshTimer=setTimeout(()=>{
     if(!googleIsRemembered())return;
     if(!validGoogleToken()||Date.now()>googleTokenExpiresAt-4*60*1000-1000)armGoogleResumeEarly();
@@ -942,7 +1016,9 @@ function armGoogleResumeEarly(){
 function resumeGoogleIfNeeded(){
   if(!googleIsRemembered())return;
   if(!googleUser&&!googleAccessToken)loadGoogleSession();
-  if(!validGoogleToken())armGoogleResume();
+  if(validGoogleToken())return;
+  if(AUTH_PROXY_URL&&googleRefreshToken){resumeViaRefresh().then(ok=>{if(!ok)armGoogleResume();});return;}
+  armGoogleResume();
 }
 window.addEventListener("focus",resumeGoogleIfNeeded);
 window.addEventListener("online",resumeGoogleIfNeeded);
@@ -958,7 +1034,7 @@ window.addEventListener("storage",e=>{
   if(validGoogleToken()){googleButtons(true);startDrivePolling();googleStatus("Google Drive connected — background sync is on");}
 });
 async function driveRequest(url,options={}){
-  if(!validGoogleToken()){armGoogleResume();throw new Error("Google token expired — tap anywhere to renew");}
+  if(!validGoogleToken()&&!(await ensureGoogleToken())){armGoogleResume();throw new Error("Google token expired — tap anywhere to renew");}
   const response=await fetch(url,{
     ...options,
     headers:{
@@ -966,7 +1042,7 @@ async function driveRequest(url,options={}){
       Authorization:"Bearer "+googleAccessToken
     }
   });
-  if(response.status===401){googleTokenExpiresAt=0;armGoogleResume();}
+  if(response.status===401){googleTokenExpiresAt=0;if(!(AUTH_PROXY_URL&&googleRefreshToken))armGoogleResume();}
   if(!response.ok){
     let detail="";
     try{detail=(await response.json()).error?.message||"";}catch(e){}
@@ -1053,7 +1129,7 @@ async function readDriveState(){
   return {data,meta};
 }
 async function syncFromDrive(initial=false){
-  if(!validGoogleToken()||driveBusy)return;
+  if(driveBusy||(!validGoogleToken()&&!(await ensureGoogleToken())))return;
   driveBusy=true;
   try{
     const result=await readDriveState();
@@ -1073,11 +1149,11 @@ async function syncFromDrive(initial=false){
 }
 function startDrivePolling(){
   clearInterval(drivePollTimer);
-  drivePollTimer=setInterval(()=>{if(validGoogleToken())syncFromDrive(false);},DRIVE_POLL_MS);
+  drivePollTimer=setInterval(async()=>{if(validGoogleToken()||await ensureGoogleToken())syncFromDrive(false);},DRIVE_POLL_MS);
 }
 async function saveToGoogleDrive(){
   if(driveBusy){scheduleDriveAutosave();return;}
-  if(!validGoogleToken()){armGoogleResume();return;}
+  if(!validGoogleToken()&&!(await ensureGoogleToken())){armGoogleResume();return;}
   driveBusy=true;googleStatus("Saving to Google Drive…");
   try{
     const data=JSON.stringify(makeDriveBackup(),null,2);
@@ -1114,13 +1190,14 @@ async function saveToGoogleDrive(){
   }finally{driveBusy=false;}
 }
 async function loadFromGoogleDrive(){
-  if(!validGoogleToken()){googleSignIn();return;}
+  if(!validGoogleToken()&&!(await ensureGoogleToken())){googleSignIn();return;}
   await syncFromDrive(true);
   toast("Google Drive data synced");
 }
 
 function scheduleDriveAutosave(){
   if(!validGoogleToken()){
+    if(AUTH_PROXY_URL&&googleRefreshToken){clearTimeout(driveSaveTimer);driveSaveTimer=setTimeout(()=>saveToGoogleDrive(),1200);return;}
     if(googleIsRemembered())armGoogleResume(); // changes stay saved locally and upload after the next tap
     return;
   }
@@ -1188,9 +1265,11 @@ if(googleIsRemembered()){
   loadGoogleSession();
   googleButtons(validGoogleToken());
   renderAccount();
+  if(AUTH_PROXY_URL&&googleRefreshToken)googleStatus("Signed in"+(googleUser&&googleUser.email?" as "+googleUser.email:"")+" — reconnecting…");
   const bootAuth=()=>{
     if(!googleConfigured()){setTimeout(bootAuth,400);return;}
     if(validGoogleToken()){initGoogleAuth();googleAfterToken();}
+    else if(AUTH_PROXY_URL&&googleRefreshToken){resumeViaRefresh().then(ok=>{if(!ok)armGoogleResume();});}
     else armGoogleResume();
   };
   setTimeout(bootAuth,300);
