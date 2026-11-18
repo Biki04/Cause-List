@@ -86,6 +86,7 @@ td select:hover{border-color:var(--line)}
 .menu-head h2{font-size:21px;color:var(--acc);margin:0}
 .menu-group{display:grid;gap:8px;margin:12px 0}
 .menu-group button{width:100%;text-align:left}
+.menu-group a.menu-link{display:block;box-sizing:border-box;width:100%;text-align:left;text-decoration:none;font-family:'Times New Roman',Times,serif;font-size:inherit;padding:8px 12px;border:1px solid rgba(185,205,227,.86);background:rgba(255,255,255,.54);color:var(--acc);border-radius:6px;transition:background .16s,border-color .16s}.menu-group a.menu-link:hover{background:var(--teal2);border-color:var(--teal);color:#0d7c7a}.menu-group a.menu-link:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .menu-caption{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);font-weight:700;margin:12px 2px 5px}
 #accountPanel{display:none;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.72)}
 #accountPanel.show{display:block}
@@ -254,6 +255,11 @@ td select:hover{border-color:var(--line)}
     <div class="account-line"><div class="account-label">Account</div><div id="accountStatus">Not connected</div></div>
     <button class="del" id="googleLogoutBtn" onclick="googleSignOut()" style="width:100%;margin-top:12px" disabled>Log out</button>
   </section>
+  <div class="menu-caption">Legal</div>
+  <div class="menu-group">
+    <a class="menu-link" href="privacy-policy.html">Privacy Policy</a>
+    <a class="menu-link" href="terms-of-service.html">Terms of Service</a>
+  </div>
 </aside>
 <div id="dayPanel"><div id="dayList"></div></div>
 <div id="mgr">
