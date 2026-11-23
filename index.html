@@ -285,6 +285,10 @@ const DEF={
   forr:["Adm. Hng","Plaint","WS","WO","W/O","PW","DW","Order","S/R","Steps","Exp. Hrg.","Requisites","Evidence","A/C","Argument","Pet. Hng.","Further (Arg/Hrg)","Appearance"]
 };
 const NAMES={court:"Court",type:"Type",forr:"For"};
+const listCmp=(a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:"base",numeric:true});
+// Type and For options are always kept in A-Z order (Court keeps the order you set).
+function sortLists(l){if(l){["type","forr"].forEach(k=>{if(Array.isArray(l[k]))l[k]=l[k].slice().sort(listCmp)})}return l}
+sortLists(DEF);
 const K="causelist_v1",CK="causelist_cases_v1",SK="causelist_days_v1";
 const CLEAN_START_KEY="causelist_clean_start_v2";
 let S,CASES=[];
@@ -307,12 +311,12 @@ function load(){
   }
   try{S=JSON.parse(localStorage.getItem(K))}catch(e){S=null}
   if(!S||!Array.isArray(S.rows)||S.rows.length===0)S={title:(S&&S.title)||"Cause List",date:(S&&S.date)||today(),place:(S&&S.place)||"",rows:[blank()],lists:(S&&S.lists)||JSON.parse(JSON.stringify(DEF))};
-  S.lists=Object.assign({},DEF,S.lists||{});
+  S.lists=sortLists(Object.assign({},DEF,S.lists||{}));
   try{CASES=JSON.parse(localStorage.getItem(CK))}catch(e){CASES=null}
   // Start with an empty case-memory list; no sample names or case details are bundled.
   if(!Array.isArray(CASES))CASES=[];
-  saveCases();
   try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
+  saveCases();
 }
 function persist(){
   try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
@@ -642,6 +646,20 @@ function renderMgr(){
   $("mgrList").innerHTML=l.length?l.map(c=>`<div><span><b>${esc(c.no)}</b> — ${esc(c.p1)} vs ${esc(c.p2)} <span class="note">(${esc([c.court,c.type].filter(Boolean).join(" · "))})</span></span><button class="del" onclick="delCase('${c.id}')">✕</button></div>`).join(""):'<div class="note">No saved cases.</div>';
 }
 function delCase(id){CASES=CASES.filter(c=>c.id!==id);saveCases();renderMgr()}
+/* A saved case lives only while it is in a saved day or in the list being worked on right now. */
+function caseInRows(c,rows){
+  return (rows||[]).some(r=>r&&((r.cid&&r.cid===c.id)||(nz(r.no)===nz(c.no)&&nz(r.p1)===nz(c.p1)&&nz(r.p2)===nz(c.p2)&&nz(r.court)===nz(c.court))));
+}
+function pruneCases(){
+  const keep=[];
+  const d=days();Object.keys(d).forEach(k=>{(d[k].rows||[]).forEach(r=>keep.push(r))});
+  (S&&S.rows||[]).forEach(r=>keep.push(r));
+  const before=CASES.length;
+  CASES=CASES.filter(c=>caseInRows(c,keep));
+  const removed=before-CASES.length;
+  if(removed>0){saveCases();renderMgr();}
+  return removed;
+}
 
 /* ---------- dropdown lists ---------- */
 function renderLists(){
@@ -651,9 +669,10 @@ function renderLists(){
 function saveList(k){
   historyCheckpoint();
   S.lists[k]=$("ls_"+k).value.split("\n").map(s=>s.trim()).filter(Boolean);
+  sortLists(S.lists);
   persist();const sc=window.scrollY;render();$("lists").classList.add("show");window.scrollTo(0,sc);toast(NAMES[k]+" list updated");
 }
-function resetLists(){historyCheckpoint();S.lists=JSON.parse(JSON.stringify(DEF));persist();render();$("lists").classList.add("show")}
+function resetLists(){historyCheckpoint();S.lists=sortLists(JSON.parse(JSON.stringify(DEF)));persist();render();$("lists").classList.add("show")}
 
 /* ---------- saved days ---------- */
 const days=()=>{try{return JSON.parse(localStorage.getItem(SK))||{}}catch(e){return {}}};
@@ -683,12 +702,14 @@ function delDay(k,btn){
   }
   delPending=null;
   const d=days();delete d[k];
-  localStorage.setItem(SK,JSON.stringify(d));renderSaved();scheduleDriveAutosave();toast("Deleted "+fmtDate(k));
+  localStorage.setItem(SK,JSON.stringify(d));pruneCases();renderSaved();scheduleDriveAutosave();toast("Deleted "+fmtDate(k));
 }
 function newDay(){
   if(!confirm("Start a new empty list? (Use 'Save this day' first to keep the current one.)"))return;
   historyCheckpoint();
   S.rows=[blank()];S.date=today();persist();render();
+  const gone=pruneCases();   // cases that were only in the unsaved list are removed
+  if(gone>0)toast(gone+" unsaved case(s) removed from Saved cases");
 }
 
 /* ---------- export ---------- */
@@ -757,7 +778,8 @@ function xlCanon(t){
   return v;
 }
 const XL_ALIAS={
-  type:{"titlesuit":"TS","titleappeal":"TA","titleexecution":"T. Ex","moneyexecution":"Money Ex.","miscellaneouscase":"Civil Misc","miscp":"Misc. Pre.","miscpre":"Misc. Pre.","civilmiscellaneous":"Civil Misc","miscadoption":"Misc. Adoption","adoption":"Misc. Adoption"},
+  court:{"adme":"Addl. Mun","am":"Addl. Mun","adm":"Addl. Mun","admun":"Addl. Mun","addlmunsif":"Addl. Mun","additionalmunsif":"Addl. Mun","addmunsif":"Addl. Mun","addlmunsifcourt":"Addl. Mun","dj":"DJ","districtjudge":"DJ","em":"EM","executivemagistrate":"EM"},
+  type:{"m":"Civil Misc","mc":"Civil Misc","misc":"Civil Misc","miscellaneous":"Civil Misc","miscase":"Civil Misc","miscp":"Misc. Pre.","mp":"Misc. Pre.","miscpetition":"Misc. Pre.","miscpre":"Misc. Pre.","ma":"Misc. Adoption","ts":"TS","ta":"TA","tex":"T. Ex","te":"T. Ex","me":"Money Ex.","mex":"Money Ex.","titlesuit":"TS","titleappeal":"TA","titleexecution":"T. Ex","moneyexecution":"Money Ex.","miscellaneouscase":"Civil Misc","miscp":"Misc. Pre.","miscpre":"Misc. Pre.","civilmiscellaneous":"Civil Misc","miscadoption":"Misc. Adoption","adoption":"Misc. Adoption"},
   forr:{"admhearing":"Adm. Hng","admissionhearing":"Adm. Hng","writtenstatement":"WS","evidence":"Evidence","argument":"Argument","arguments":"Argument","appearance":"Appearance","requisite":"Requisites","steps":"Steps","order":"Order","orders":"Order","plaint":"Plaint"}
 };
 // Return the dropdown option this value means, or "" when it is not clearly one of them.
@@ -767,7 +789,10 @@ function xlMatchOption(val,opts,field){
   let hit=list.find(o=>String(o).trim().toLowerCase()===v.toLowerCase());if(hit)return hit;
   const c=xlCanon(v);
   if(c){hit=list.find(o=>xlCanon(o)===c);if(hit)return hit;}
-  const a=XL_ALIAS[field]&&XL_ALIAS[field][xlAln(v)];
+  const key=xlAln(v);
+  const learned=(xlLearned()[field]||{})[key];
+  if(learned){hit=list.find(o=>xlAln(o)===xlAln(learned));if(hit)return hit;}
+  const a=XL_ALIAS[field]&&XL_ALIAS[field][key];
   if(a){hit=list.find(o=>xlAln(o)===xlAln(a));if(hit)return hit;}
   return "";
 }
@@ -812,6 +837,10 @@ function xlBuildRows(rows,layout,lists){
   }
   return {rows:out,unk};
 }
+// Abbreviations I have been taught before (stored on this device).
+const XL_LEARN_KEY="causelist_import_alias_v1";
+function xlLearned(){try{return JSON.parse(localStorage.getItem(XL_LEARN_KEY))||{}}catch(e){return {}}}
+function xlLearn(field,val,opt){const m=xlLearned();(m[field]=m[field]||{})[xlAln(val)]=opt;try{localStorage.setItem(XL_LEARN_KEY,JSON.stringify(m))}catch(e){}}
 const XL_NAMES={court:"Court",type:"Type",no:"Case No.",p1:"Petitioner",p2:"Opposite party",parties:"Parties",forr:"For",rem:"Remarks"};
 async function importExcel(inp){
   const file=inp.files&&inp.files[0];inp.value="";
@@ -827,7 +856,17 @@ async function importExcel(inp){
     if(layout&&(!pick||layout.n>pick.layout.n||(layout.n===pick.layout.n&&rows.length>pick.rows.length)))pick={name,rows,layout};
   });
   if(!pick){toast("Could not recognise the columns (need headings like Court, Case No., Petitioner…)");return}
-  const res=xlBuildRows(pick.rows,pick.layout,S.lists);
+  let res=xlBuildRows(pick.rows,pick.layout,S.lists);
+  let taught=0;
+  for(const f of ["court","type","forr"]){
+    for(const val of [...res.unk[f]].slice(0,6)){
+      const ans=prompt("Excel has \""+val+"\" under "+XL_NAMES[f]+", which is not in your list.\nType the option it means (exactly as in your list) to remember it, or leave empty to keep it blank:\n\n"+S.lists[f].join(", "));
+      if(ans===null)break;
+      const opt=S.lists[f].find(o=>nz(o)===nz(ans));
+      if(opt){xlLearn(f,val,opt);taught++}
+    }
+  }
+  if(taught)res=xlBuildRows(pick.rows,pick.layout,S.lists);
   if(!res.rows.length){toast("No case rows found under the headings");return}
   const cols=Object.keys(pick.layout.map).map(k=>XL_NAMES[k]).join(", ");
   const notes=[];
@@ -860,22 +899,33 @@ function restore(inp){
     let d;try{d=JSON.parse(rd.result)}catch(e){toast("Not a valid backup file");return}
     if(!d||d.app!=="causelist"){toast("Not a Cause List backup");return}
     historyCheckpoint();
-    let nc=0,nd=0;
+    let nc=0,nd=0,nr=0;
+    const rk=r=>[r.court,r.type,r.no,r.p1,r.p2].map(nz).join("|");
+    // Saved cases: what is already here always stays as it is; only cases not present yet are added.
     (d.cases||[]).forEach(c=>{
       if(!c||!(c.no||c.p1||c.p2))return;
-      const dup=CASES.some(x=>nz(x.no)===nz(c.no)&&nz(x.p1)===nz(c.p1)&&nz(x.p2)===nz(c.p2)&&nz(x.court)===nz(c.court));
-      if(!dup){CASES.push({id:uid(),court:c.court||"",type:c.type||"",no:c.no||"",p1:c.p1||"",p2:c.p2||""});nc++}
+      if(CASES.some(x=>(c.id&&x.id===c.id)||(nz(x.no)===nz(c.no)&&nz(x.p1)===nz(c.p1)&&nz(x.p2)===nz(c.p2)&&nz(x.court)===nz(c.court))))return;
+      CASES.push({id:(c.id&&!CASES.some(x=>x.id===c.id))?c.id:uid(),court:c.court||"",type:c.type||"",no:c.no||"",p1:c.p1||"",p2:c.p2||"",updated:c.updated||Date.now()});nc++;
     });
     saveCases();
+    // Saved days: a day I already have is never replaced; only rows it does not contain yet are added to it.
     const cur=days();
-    Object.keys(d.days||{}).forEach(k=>{if(!cur[k]){cur[k]=d.days[k];nd++}});
-    localStorage.setItem(SK,JSON.stringify(cur));
-    if(d.lists)Object.keys(NAMES).forEach(k=>{
-      (d.lists[k]||[]).forEach(o=>{if(!S.lists[k].includes(o))S.lists[k].push(o)});
+    Object.keys(d.days||{}).forEach(k=>{
+      const inc=d.days[k]||{};
+      if(!cur[k]){cur[k]=inc;nd++;return}
+      const have=new Set((cur[k].rows||[]).map(rk));
+      const extra=(inc.rows||[]).filter(r=>r&&rk(r).replace(/\|/g,"")&&!have.has(rk(r)));
+      if(extra.length){cur[k].rows=(cur[k].rows||[]).concat(extra);cur[k].updatedAt=new Date().toISOString();nr+=extra.length}
     });
-    persist();render();
+    localStorage.setItem(SK,JSON.stringify(cur));
+    // Dropdown options: keep mine, add only the ones I do not have.
+    if(d.lists)Object.keys(NAMES).forEach(k=>{
+      (d.lists[k]||[]).forEach(o=>{if(!S.lists[k].some(x=>nz(x)===nz(o)))S.lists[k].push(o)});
+    });
+    sortLists(S.lists);
+    pruneCases();persist();render();
     if(validGoogleToken())setTimeout(()=>saveToGoogleDrive(),250);
-    toast(nc+" new case(s), "+nd+" new day(s) added");
+    toast(nc+" new case(s), "+nd+" new day(s)"+(nr?", "+nr+" row(s) added to existing days":"")+" added; your own data was kept");
   };
   rd.readAsText(f);
 }
@@ -1119,12 +1169,57 @@ function codeSignIn(){
   }
   googleCodeClient.requestCode();
 }
+/* Phones block or lose Google's pop-up window, so on mobile sign-in is a normal full-page redirect to Google and back. */
+const googleIsMobile=()=>/Android|iPhone|iPad|iPod|Mobile|Opera Mini/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&Math.min(screen.width,screen.height)<820);
+const GOOGLE_STATE_KEY="causelist_oauth_state_v1";
+const googleRedirectUri=()=>location.origin+location.pathname;
+function googleRedirectSignIn(){
+  const state=uid()+uid();
+  try{localStorage.setItem(GOOGLE_STATE_KEY,state)}catch(e){}
+  const viaProxy=!!AUTH_PROXY_URL&&!googleProxyBroken;
+  const p=new URLSearchParams({client_id:GOOGLE_CLIENT_ID,redirect_uri:googleRedirectUri(),response_type:viaProxy?"code":"token",scope:DRIVE_SCOPE,state,include_granted_scopes:"true"});
+  if(viaProxy){p.set("access_type","offline");p.set("prompt","consent");}
+  else if(!googleUser)p.set("prompt","consent");
+  if(googleUser&&googleUser.email)p.set("login_hint",googleUser.email);
+  googleStatus("Opening Google sign-in…");
+  location.href="https://accounts.google.com/o/oauth2/v2/auth?"+p.toString();
+}
+// Runs on every page load: picks up the result when Google sends the user back to the app.
+function handleGoogleRedirect(){
+  const q=new URLSearchParams(location.search),h=new URLSearchParams(location.hash.replace(/^#/,""));
+  const code=q.get("code"),tok=h.get("access_token"),err=q.get("error")||h.get("error");
+  const state=q.get("state")||h.get("state");
+  if(!(code||tok||err)||!state)return false;
+  let expected="";try{expected=localStorage.getItem(GOOGLE_STATE_KEY)||""}catch(e){}
+  try{localStorage.removeItem(GOOGLE_STATE_KEY)}catch(e){}
+  try{history.replaceState(null,"",location.pathname)}catch(e){}   // clean the address bar
+  if(!expected||state!==expected){googleStatus("Google sign-in could not be verified. Please try again.");return true;}
+  if(err){googleStatus(err==="access_denied"?"Google sign-in was cancelled":"Google sign-in failed: "+err);return true;}
+  (async()=>{
+    try{
+      if(code){
+        googleStatus("Finishing sign-in…");
+        const t=await proxyCall({action:"exchange",code,redirect_uri:googleRedirectUri()});
+        if(!t.access_token)throw new Error(t.error_description||t.error||"token exchange failed");
+        googleAccessToken=t.access_token;
+        googleTokenExpiresAt=Date.now()+(Number(t.expires_in||3600)*1000);
+        if(t.refresh_token)googleRefreshToken=t.refresh_token;
+      }else{
+        googleAccessToken=tok;
+        googleTokenExpiresAt=Date.now()+(Number(h.get("expires_in")||3600)*1000);
+      }
+      await googleAfterToken();
+    }catch(e){googleStatus("Sign-in failed: "+e.message);}
+  })();
+  return true;
+}
 function googleSignIn(){
   if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("PASTE_YOUR")){
     toast("First add your Google OAuth Client ID in the HTML");
     googleStatus("Google OAuth Client ID is not configured");
     return;
   }
+  if(googleIsMobile()){googleRedirectSignIn();return;}
   const start=()=>{
     if(AUTH_PROXY_URL&&!googleProxyBroken&&window.google&&google.accounts&&google.accounts.oauth2){codeSignIn();return;}
     if(!initGoogleAuth())return;
@@ -1293,7 +1388,7 @@ function mergeLists(a,b){
 function mergeCloudData(data,initial=false){
   const before=JSON.stringify({S,CASES,days:days()});
   const remoteLists=Object.assign({},DEF,data.lists||data.current?.lists||{});
-  const mergedLists=mergeLists(S.lists,remoteLists);
+  const mergedLists=sortLists(mergeLists(S.lists,remoteLists));
   CASES=mergeCases(CASES,data.cases||[]);saveCases();
   const mergedDays=mergeDays(days(),data.days||{});localStorage.setItem(SK,JSON.stringify(mergedDays));
   // Preserve a populated offline list on first sign-in; merge its saved collections,
@@ -1311,6 +1406,7 @@ function mergeCloudData(data,initial=false){
     S.lists=mergedLists;
     try{localStorage.setItem(K,JSON.stringify(S));}catch(e){}
   }
+  pruneCases();
   const after=JSON.stringify({S,CASES,days:days()});
   const changed=before!==after;
   if(changed)render();
@@ -1454,11 +1550,13 @@ window.addEventListener("afterprint",()=>{
   if(control)setPrintOrientation(control.value);
 });
 
-load();historyInit();render();renderAccount();
+load();pruneCases();historyInit();render();renderAccount();
 try{setPrintOrientation(localStorage.getItem(PRINT_ORIENTATION_KEY)||"portrait")}catch(e){setPrintOrientation("portrait")}
 restoreCauseTypography();
 // Restore the saved Google login on every load (stays until you press Log out).
-if(googleIsRemembered()){
+if(googleIsRemembered())loadGoogleSession();
+const googleReturned=handleGoogleRedirect();
+if(!googleReturned&&googleIsRemembered()){
   loadGoogleSession();
   googleButtons(validGoogleToken());
   renderAccount();
